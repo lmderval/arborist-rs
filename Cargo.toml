@@ -1,0 +1,9 @@
+[package]
+name = "arborist-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.5", features = ["derive"] }
+minijinja = "2.21.0"
+pest = "2.8.8"
