@@ -1,0 +1,14 @@
+# Enums creation
+enum Operator {
+  PLUS,
+  MINUS,
+}
+
+# Nodes creation
+node Exp {}
+
+node IntExp(Exp) {}
+
+node UnaryExp(Exp) {}
+
+node BinaryExp(Exp) {}

@@ -1,0 +1,19 @@
+Config = _{ SOI ~ Dec* ~ EOI }
+
+Dec = { NodeDec | EnumDec }
+
+NodeDec = { "node" ~ TypeId ~ Parents ~ "{" ~ "}" }
+
+EnumDec = { "enum" ~ TypeId ~ "{" ~ EnumValues ~ "}" }
+
+EnumValues = { EnumId ~ ("," ~ EnumId)* ~ ","? }
+
+Parents = { ("(" ~ TypeId ~ ("," ~ TypeId)* ~ ","? ~ ")")? }
+
+TypeId = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHA* }
+
+EnumId = @{ ASCII_ALPHA_UPPER+ }
+
+COMMENT = _{ "#" ~ (!"\n" ~ ANY)* }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
