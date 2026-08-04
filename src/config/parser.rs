@@ -23,6 +23,7 @@ fn parse_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
         Rule::Dec => parse_dec(pair.into_inner().next().unwrap()),
         Rule::NodeDec => parse_node_dec(pair),
         Rule::EnumDec => parse_enum_dec(pair),
+        Rule::AttrDec => parse_attr_dec(pair),
         unknown => panic!("unknown dec: {:?}", unknown),
     }
 }
@@ -34,11 +35,14 @@ fn parse_node_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
     let parents_pair = pairs.next().unwrap();
     let parents = parents_pair
         .into_inner()
-        .map(|p| Type::new(Ty::Name(String::from(p.as_str()))))
+        .map(|p| Type::new(parse_ty(p)))
         .collect();
+    let decs_pair = pairs.next().unwrap();
+    let decs = decs_pair.into_inner().map(|p| parse_dec(p)).collect();
     Dec::Node {
         name: name,
         parents: parents,
+        decs: decs,
     }
 }
 
@@ -54,5 +58,74 @@ fn parse_enum_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
     Dec::Enum {
         name: name,
         values: values,
+    }
+}
+
+fn parse_attr_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
+    let mut pairs = pair.into_inner();
+    let modifier_pair = pairs.next().unwrap();
+    let modifier = parse_modifier(modifier_pair);
+    let name_pair = pairs.next().unwrap();
+    let name = String::from(name_pair.as_str());
+    let ty_pair = pairs.next().unwrap();
+    let ty = Type::new(parse_ty(ty_pair));
+    Dec::Attr {
+        name: name,
+        modifier: modifier,
+        ty: ty,
+    }
+}
+
+fn parse_modifier(pair: pest::iterators::Pair<Rule>) -> AttrMod {
+    match pair.as_rule() {
+        Rule::AttrMod => parse_modifier(pair.into_inner().next().unwrap()),
+        Rule::UserAttrMod => parse_user_modifier(pair),
+        Rule::PrimitiveAttrMod => parse_primitive_modifier(pair),
+        unknown => panic!("unknown modifier: {:?}", unknown),
+    }
+}
+
+fn parse_user_modifier(pair: pest::iterators::Pair<Rule>) -> AttrMod {
+    let access_pair = pair.into_inner().next().unwrap();
+    access_pair
+        .as_str()
+        .chars()
+        .fold(AttrMod::Access(false, false, false), |res, c| match res {
+            AttrMod::Access(r, w, m) => match c {
+                'r' => AttrMod::Access(true, w, m),
+                'w' => AttrMod::Access(r, true, m),
+                'm' => AttrMod::Access(r, w, true),
+                unknown => panic!("unknown user modifier: {:?}", unknown),
+            },
+            _ => unreachable!(),
+        })
+}
+
+fn parse_primitive_modifier(pair: pest::iterators::Pair<Rule>) -> AttrMod {
+    match pair.as_str() {
+        "" => AttrMod::None,
+        "readable" => AttrMod::Readable,
+        "writable" => AttrMod::Writable,
+        "mutable" => AttrMod::Mutable,
+        unknown => panic!("unknown primitive modifier: {:?}", unknown),
+    }
+}
+
+fn parse_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
+    match pair.as_rule() {
+        Rule::Type => parse_ty(pair.into_inner().next().unwrap()),
+        Rule::TypeId => Ty::Name(String::from(pair.as_str())),
+        Rule::PrimitiveType => parse_primitive_ty(pair),
+        unknown => panic!("unknown type: {:?}", unknown),
+    }
+}
+
+fn parse_primitive_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
+    match pair.as_str() {
+        "i8" => Ty::Int(8),
+        "i16" => Ty::Int(16),
+        "i32" => Ty::Int(32),
+        "i64" => Ty::Int(64),
+        unknown => panic!("unknown primitive type: {:?}", unknown),
     }
 }

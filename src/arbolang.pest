@@ -2,17 +2,35 @@ Config = _{ SOI ~ Dec* ~ EOI }
 
 Dec = { NodeDec | EnumDec }
 
-NodeDec = { "node" ~ TypeId ~ Parents ~ "{" ~ "}" }
+NodeDec = { "node" ~ TypeId ~ Parents ~ "{" ~ NodeBody ~ "}" }
 
 EnumDec = { "enum" ~ TypeId ~ "{" ~ EnumValues ~ "}" }
+
+AttrDec = { AttrMod ~ AttrId ~ ":" ~ Type ~ ";" }
 
 EnumValues = { EnumId ~ ("," ~ EnumId)* ~ ","? }
 
 Parents = { ("(" ~ TypeId ~ ("," ~ TypeId)* ~ ","? ~ ")")? }
 
+AttrMod = { UserAttrMod | PrimitiveAttrMod }
+
+UserAttrMod = { "access" ~ "<" ~ AttrModId ~ ">" }
+
+PrimitiveAttrMod = { ("readable" | "writable" | "mutable")? }
+
+NodeBody = { AttrDec* }
+
+Type = { TypeId | PrimitiveType }
+
+PrimitiveType = { "i8" | "i16" | "i32" | "i64" }
+
 TypeId = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHA* }
 
 EnumId = @{ ASCII_ALPHA_UPPER+ }
+
+AttrId = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | "_")* }
+
+AttrModId = @{ ("r" | "w" | "m")* }
 
 COMMENT = _{ "#" ~ (!"\n" ~ ANY)* }
 

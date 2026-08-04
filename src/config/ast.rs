@@ -1,5 +1,6 @@
 pub enum Ty {
     Name(String),
+    Int(u8),
 }
 
 pub struct Type<'a> {
@@ -17,14 +18,28 @@ impl<'a> Type<'a> {
     }
 }
 
+pub enum AttrMod {
+    None,
+    Readable,
+    Writable,
+    Mutable,
+    Access(bool, bool, bool),
+}
+
 pub enum Dec<'a> {
     Node {
         name: String,
         parents: Vec<Type<'a>>,
+        decs: Vec<Dec<'a>>,
     },
     Enum {
         name: String,
         values: Vec<String>,
+    },
+    Attr {
+        name: String,
+        modifier: AttrMod,
+        ty: Type<'a>,
     },
 }
 

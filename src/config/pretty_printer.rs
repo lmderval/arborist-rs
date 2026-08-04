@@ -26,7 +26,7 @@ impl PrettyPrinter {
 }
 
 impl VoidVisitor for PrettyPrinter {
-    fn visit_node_dec(&mut self, name: &String, parents: &Vec<Type>) {
+    fn visit_node_dec(&mut self, name: &String, parents: &Vec<Type>, decs: &Vec<Dec>) {
         self.output
             .push_str(&format!("{}node {}", self.indent_str(), name));
         match parents {
@@ -48,7 +48,16 @@ impl VoidVisitor for PrettyPrinter {
                 self.output.push_str(&format!("{})", self.indent_str()));
             }
         }
-        self.output.push_str(" {}\n\n");
+        if decs.is_empty() {
+            self.output.push_str(" {}\n\n");
+        } else {
+            self.output.push_str(" {\n");
+            self.indent += 1;
+            decs.iter().for_each(|d| self.visit_dec(d));
+            self.indent -= 1;
+            self.output
+                .push_str(&format!("{}}}\n\n", self.indent_str()));
+        }
     }
 
     fn visit_enum_dec(&mut self, name: &String, values: &Vec<String>) {
@@ -62,7 +71,37 @@ impl VoidVisitor for PrettyPrinter {
         self.output.push_str("}\n\n");
     }
 
+    fn visit_attr_dec(&mut self, name: &String, modifier: &AttrMod, ty: &Type) {
+        let modifier_str = match modifier {
+            AttrMod::None => "",
+            AttrMod::Readable => "readable ",
+            AttrMod::Writable => "writable ",
+            AttrMod::Mutable => "mutable ",
+            AttrMod::Access(r, w, m) => {
+                let mut access = String::new();
+                if *r {
+                    access.push('r');
+                }
+                if *w {
+                    access.push('w');
+                }
+                if *m {
+                    access.push('m');
+                }
+                &format!("access<{}> ", access)
+            }
+        };
+        self.output
+            .push_str(&format!("{}{}{}: ", self.indent_str(), modifier_str, name));
+        self.visit_type(ty);
+        self.output.push_str(";\n");
+    }
+
     fn visit_name_ty(&mut self, name: &String) {
         self.output.push_str(name);
+    }
+
+    fn visit_int_ty(&mut self, size: &u8) {
+        self.output.push_str(&format!("i{}", size));
     }
 }

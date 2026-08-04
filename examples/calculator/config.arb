@@ -7,8 +7,17 @@ enum Operator {
 # Nodes creation
 node Exp {}
 
-node IntExp(Exp) {}
+node IntExp(Exp) {
+  readable value: i64;
+}
 
-node UnaryExp(Exp) {}
+node UnaryExp(Exp) {
+  readable op: Operator;
+  writable exp: Exp;
+}
 
-node BinaryExp(Exp) {}
+node BinaryExp(Exp) {
+  readable op: Operator;
+  writable lhs: Exp;
+  writable rhs: Exp;
+}
