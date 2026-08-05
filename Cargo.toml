@@ -8,3 +8,4 @@ clap = { version = "4.6.5", features = ["derive"] }
 minijinja = "2.21.0"
 pest = "2.8.8"
 pest_derive = "2.8.8"
+serde_core = "1.0.229"

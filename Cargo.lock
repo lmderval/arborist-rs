@@ -60,6 +60,7 @@ dependencies = [
  "minijinja",
  "pest",
  "pest_derive",
+ "serde_core",
 ]
 
 [[package]]
