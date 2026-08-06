@@ -3,6 +3,12 @@ use serde_core::Serialize;
 
 use crate::config::ast::*;
 
+macro_rules! serialize_kind {
+    ( $state:expr; $kind:expr ) => {
+        $state.serialize_field("kind", $kind)?
+    };
+}
+
 impl Serialize for Ty {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -11,14 +17,19 @@ impl Serialize for Ty {
         match self {
             Self::Name(n) => {
                 let mut state = serializer.serialize_struct("NameTy", 2)?;
-                state.serialize_field("kind", "Name")?;
+                serialize_kind!(state; "Name");
                 state.serialize_field("name", n)?;
                 state.end()
             }
             Self::Int(s) => {
                 let mut state = serializer.serialize_struct("IntTy", 2)?;
-                state.serialize_field("kind", "Int")?;
+                serialize_kind!(state; "Int");
                 state.serialize_field("size", s)?;
+                state.end()
+            }
+            Self::Str => {
+                let mut state = serializer.serialize_struct("StrTy", 1)?;
+                serialize_kind!(state; "Str");
                 state.end()
             }
         }
@@ -73,7 +84,7 @@ impl Serialize for Dec<'_> {
                 decs,
             } => {
                 let mut state = serializer.serialize_struct("NodeDec", 4)?;
-                state.serialize_field("kind", "Node")?;
+                serialize_kind!(state; "Node");
                 state.serialize_field("name", name)?;
                 state.serialize_field("parents", parents)?;
                 state.serialize_field("decs", decs)?;
@@ -81,14 +92,14 @@ impl Serialize for Dec<'_> {
             }
             Self::Enum { name, values } => {
                 let mut state = serializer.serialize_struct("EnumDec", 3)?;
-                state.serialize_field("kind", "Enum")?;
+                serialize_kind!(state; "Enum");
                 state.serialize_field("name", name)?;
                 state.serialize_field("values", values)?;
                 state.end()
             }
             Self::Attr { name, modifier, ty } => {
                 let mut state = serializer.serialize_struct("AttrDec", 4)?;
-                state.serialize_field("kind", "Attr")?;
+                serialize_kind!(state; "Attr");
                 state.serialize_field("name", name)?;
                 state.serialize_field("modifier", modifier)?;
                 state.serialize_field("ty", ty)?;
@@ -98,13 +109,65 @@ impl Serialize for Dec<'_> {
     }
 }
 
+macro_rules! serialize_value {
+    ( $state:expr; $value:expr ) => {
+        $state.serialize_field("value", $value)?
+    };
+}
+
+impl Serialize for Value {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde_core::Serializer,
+    {
+        match self {
+            Self::Int(n) => {
+                let mut state = serializer.serialize_struct("IntValue", 2)?;
+                serialize_kind!(state; "Int");
+                serialize_value!(state; n);
+                state.end()
+            }
+            Self::Str(s) => {
+                let mut state = serializer.serialize_struct("StrValue", 2)?;
+                serialize_kind!(state; "Str");
+                serialize_value!(state; s);
+                state.end()
+            }
+        }
+    }
+}
+
+impl Serialize for Exp<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde_core::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Exp", 1)?;
+        state.serialize_field("value", &self.value)?;
+        state.end()
+    }
+}
+
+impl Serialize for Var<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde_core::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Var", 2)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("exp", &self.exp)?;
+        state.end()
+    }
+}
+
 impl Serialize for Config<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
     {
-        let mut state = serializer.serialize_struct("Config", 1)?;
+        let mut state = serializer.serialize_struct("Config", 2)?;
         state.serialize_field("decs", &self.decs)?;
+        state.serialize_field("vars", &self.vars)?;
         state.end()
     }
 }

@@ -1,4 +1,17 @@
-Config = _{ SOI ~ Dec* ~ EOI }
+Config = _{ SOI ~ Var* ~ Dec* ~ EOI }
+
+Var = { VarId ~ "=" ~ Exp ~ ";" }
+
+Exp = { IntExp | StringExp }
+
+IntExp = @{ ASCII_DIGIT+ }
+
+StringExp = ${ "\"" ~ StringContent ~ "\"" }
+
+StringContent = @{ (
+      (!("\"" | "\\") ~ ANY)
+    | ("\\" ~ ("\\" | "\""))
+)* }
 
 Dec = { NodeDec | EnumDec }
 
@@ -22,7 +35,9 @@ NodeBody = { AttrDec* }
 
 Type = { TypeId | PrimitiveType }
 
-PrimitiveType = { "i8" | "i16" | "i32" | "i64" }
+PrimitiveType = { "i8" | "i16" | "i32" | "i64" | "str" }
+
+VarId = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | "_")* }
 
 TypeId = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHA* }
 

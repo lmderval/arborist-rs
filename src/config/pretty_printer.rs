@@ -26,6 +26,20 @@ impl PrettyPrinter {
 }
 
 impl VoidVisitor for PrettyPrinter {
+    fn visit_var(&mut self, var: &Var) {
+        self.output
+            .push_str(&format!("{}{} = ", self.indent_str(), var.name));
+        self.visit_exp(&var.exp);
+        self.output.push_str(";\n\n");
+    }
+
+    fn visit_value(&mut self, value: &Value) {
+        match value {
+            Value::Int(n) => self.output.push_str(&format!("{}", n)),
+            Value::Str(s) => self.output.push_str(&format!("\"{}\"", s)),
+        }
+    }
+
     fn visit_node_dec(&mut self, name: &String, parents: &Vec<Type>, decs: &Vec<Dec>) {
         self.output
             .push_str(&format!("{}node {}", self.indent_str(), name));
@@ -103,5 +117,9 @@ impl VoidVisitor for PrettyPrinter {
 
     fn visit_int_ty(&mut self, size: &u8) {
         self.output.push_str(&format!("i{}", size));
+    }
+
+    fn visit_str_ty(&mut self) {
+        self.output.push_str("str");
     }
 }

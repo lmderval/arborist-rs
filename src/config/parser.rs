@@ -1,5 +1,6 @@
 use pest::{self, Parser};
 use pest_derive;
+use std::collections::HashMap;
 
 use crate::config::ast::*;
 
@@ -9,13 +10,49 @@ struct ConfigParser;
 
 pub fn parse(source: &str) -> std::result::Result<Config<'_>, pest::error::Error<Rule>> {
     let mut decs = Vec::new();
+    let mut vars = HashMap::new();
     let pairs = ConfigParser::parse(Rule::Config, source)?;
     for pair in pairs {
-        if let Rule::Dec = pair.as_rule() {
-            decs.push(parse_dec(pair));
+        match pair.as_rule() {
+            Rule::Dec => decs.push(parse_dec(pair)),
+            Rule::Var => {
+                let var = parse_var(pair);
+                vars.insert(var.name.clone(), var);
+            }
+            Rule::EOI => {}
+            unknown => panic!("unknown config: {:?}", unknown),
         }
     }
-    Ok(Config::new(decs))
+    Ok(Config::new(decs, vars))
+}
+
+fn parse_var(pair: pest::iterators::Pair<Rule>) -> Var {
+    let mut pairs = pair.into_inner();
+    let name_pair = pairs.next().unwrap();
+    let name = String::from(name_pair.as_str());
+    let exp_pair = pairs.next().unwrap();
+    let exp = parse_exp(exp_pair);
+    Var::new(name, exp)
+}
+
+fn parse_exp(pair: pest::iterators::Pair<Rule>) -> Exp {
+    match pair.as_rule() {
+        Rule::Exp => parse_exp(pair.into_inner().next().unwrap()),
+        Rule::IntExp => parse_int_exp(pair),
+        Rule::StringExp => parse_string_exp(pair),
+        unknown => panic!("unknown exp: {:?}", unknown),
+    }
+}
+
+fn parse_int_exp(pair: pest::iterators::Pair<Rule>) -> Exp {
+    let value = pair.as_str().parse().expect("unable to parse integer");
+    Exp::new(Value::Int(value))
+}
+
+fn parse_string_exp(pair: pest::iterators::Pair<Rule>) -> Exp {
+    let content_pair = pair.into_inner().next().unwrap();
+    let content = String::from(content_pair.as_str());
+    Exp::new(Value::Str(content))
 }
 
 fn parse_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
@@ -126,6 +163,7 @@ fn parse_primitive_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
         "i16" => Ty::Int(16),
         "i32" => Ty::Int(32),
         "i64" => Ty::Int(64),
+        "str" => Ty::Str,
         unknown => panic!("unknown primitive type: {:?}", unknown),
     }
 }

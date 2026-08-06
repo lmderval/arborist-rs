@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 pub enum Ty {
     Name(String),
     Int(u8),
+    Str,
 }
 
 pub struct Type<'a> {
@@ -43,12 +46,49 @@ pub enum Dec<'a> {
     },
 }
 
+pub enum Value {
+    Int(i64),
+    Str(String),
+}
+
+pub struct Exp<'a> {
+    pub ty: Option<&'a Type<'a>>,
+    pub value: Value,
+}
+
+impl<'a> Exp<'a> {
+    pub fn new(value: Value) -> Self {
+        Self {
+            ty: None,
+            value: value,
+        }
+    }
+}
+
+pub struct Var<'a> {
+    pub name: String,
+    pub exp: Exp<'a>,
+}
+
+impl<'a> Var<'a> {
+    pub fn new(name: String, exp: Exp<'a>) -> Self {
+        Self {
+            name: name,
+            exp: exp,
+        }
+    }
+}
+
 pub struct Config<'a> {
     pub decs: Vec<Dec<'a>>,
+    pub vars: HashMap<String, Var<'a>>,
 }
 
 impl<'a> Config<'a> {
-    pub fn new(decs: Vec<Dec<'a>>) -> Self {
-        Self { decs: decs }
+    pub fn new(decs: Vec<Dec<'a>>, vars: HashMap<String, Var<'a>>) -> Self {
+        Self {
+            decs: decs,
+            vars: vars,
+        }
     }
 }

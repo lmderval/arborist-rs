@@ -1,3 +1,6 @@
+# Configuration variables
+templates_dir = "./";
+
 # Enums creation
 enum Operator {
   PLUS,
