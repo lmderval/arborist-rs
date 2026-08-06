@@ -1,9 +1,11 @@
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
 
-use minijinja::{context, Environment, Template, Value};
+use minijinja::{context, path_loader, Environment, Error, Template, Value};
 
-use crate::config::ast::Config;
+use crate::config::ast::{self, Config};
+
+const TEMPLATE_EXTS: [&str; 3] = [".jinja", ".jinja2", ".j2"];
 
 fn input_name(input: &PathBuf) -> String {
     match input.file_name() {
@@ -12,9 +14,54 @@ fn input_name(input: &PathBuf) -> String {
     }
 }
 
-fn prepare_env(env: &mut Environment) {
+fn multi_loader<F>(loaders: Vec<F>) -> impl Fn(&str) -> Result<Option<String>, Error>
+where
+    F: Fn(&str) -> Result<Option<String>, Error>,
+{
+    move |name| {
+        let mut template_names = vec![String::from(name)];
+        TEMPLATE_EXTS
+            .iter()
+            .for_each(|ext| template_names.push(format!("{}{}", name, ext)));
+        for template_name in template_names {
+            for loader in &loaders {
+                match loader(&template_name) {
+                    Ok(Some(result)) => {
+                        return Ok(Some(result));
+                    }
+                    Ok(None) => {}
+                    Err(err) => {
+                        return Err(err);
+                    }
+                };
+            }
+        }
+        Ok(None)
+    }
+}
+
+fn prepare_env(env: &mut Environment, config: &Config) {
     env.set_lstrip_blocks(true);
     env.set_trim_blocks(true);
+    let mut loaders = Vec::new();
+    if let Ok(dir) = env::var("TEMPLATES_DIR") {
+        loaders.push(path_loader(dir.into()));
+    }
+    if let Some(path) = &config.path {
+        if let Some(ast::Var {
+            exp:
+                ast::Exp {
+                    value: ast::Value::Str(subdir),
+                    ..
+                },
+            ..
+        }) = config.vars.get("templates_dir")
+        {
+            let dir = path.parent().unwrap().join(subdir);
+            loaders.push(path_loader(dir));
+        }
+    }
+    env.set_loader(multi_loader(loaders));
 }
 
 fn load_template<'a>(env: &'a mut Environment, template: &PathBuf) -> Template<'a, 'a> {
@@ -36,8 +83,7 @@ fn build_context(config: &Config) -> Value {
 }
 
 fn remove_template_extension(basename: &str) -> &str {
-    let exts = [".jinja", ".jinja2", ".j2"];
-    for ext in exts {
+    for ext in TEMPLATE_EXTS {
         if !basename.ends_with(ext) {
             continue;
         }
@@ -49,7 +95,7 @@ fn remove_template_extension(basename: &str) -> &str {
 
 pub fn render(config: &Config, template: &Option<PathBuf>) {
     let mut env = Environment::new();
-    prepare_env(&mut env);
+    prepare_env(&mut env, config);
     let mut to_render = Vec::new();
     match template {
         Some(t) => {

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 pub enum Ty {
     Name(String),
@@ -80,6 +81,7 @@ impl<'a> Var<'a> {
 }
 
 pub struct Config<'a> {
+    pub path: Option<&'a PathBuf>,
     pub decs: Vec<Dec<'a>>,
     pub vars: HashMap<String, Var<'a>>,
 }
@@ -87,8 +89,13 @@ pub struct Config<'a> {
 impl<'a> Config<'a> {
     pub fn new(decs: Vec<Dec<'a>>, vars: HashMap<String, Var<'a>>) -> Self {
         Self {
+            path: None,
             decs: decs,
             vars: vars,
         }
+    }
+
+    pub fn set_path(&mut self, path: &'a PathBuf) {
+        self.path = Some(path)
     }
 }

@@ -34,8 +34,9 @@ enum Commands {
 fn main() {
     let cli = Cli::parse();
 
-    let unparsed_config = fs::read_to_string(cli.config).expect("cannot read file");
-    let config = parse(&unparsed_config).expect("unsuccessful parse");
+    let unparsed_config = fs::read_to_string(&cli.config).expect("cannot read file");
+    let mut config = parse(&unparsed_config).expect("unsuccessful parse");
+    config.set_path(&cli.config);
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print_config(&config),
