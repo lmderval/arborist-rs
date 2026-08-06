@@ -4,8 +4,10 @@ use std::path::PathBuf;
 
 use crate::config::parser::parse;
 use crate::config::pretty_printer::PrettyPrinter;
+use crate::render::renderer;
 
 pub mod config;
+pub mod render;
 
 #[derive(Parser)]
 #[command(version, about = "An AST generator for any language", long_about = None)]
@@ -21,6 +23,11 @@ struct Cli {
 enum Commands {
     /// Pretty print the configuration file
     PrettyPrint,
+    /// Render a template from the configuration
+    Render {
+        #[arg(short, long, value_name = "FILE")]
+        template: PathBuf,
+    },
 }
 
 fn main() {
@@ -31,5 +38,6 @@ fn main() {
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print_config(&config),
+        Commands::Render { template } => renderer::render(&config, &Some(template)),
     }
 }
