@@ -1,6 +1,7 @@
-use minijinja::{context, Environment, Template, Value};
 use std::fs;
 use std::path::PathBuf;
+
+use minijinja::{context, Environment, Template, Value};
 
 use crate::config::ast::Config;
 

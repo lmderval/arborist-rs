@@ -1,6 +1,7 @@
-use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
 
 use crate::config::parser::parse;
 use crate::config::pretty_printer::PrettyPrinter;

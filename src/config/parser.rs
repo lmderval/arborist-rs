@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use pest::{self, Parser};
 use pest_derive;
-use std::collections::HashMap;
 
 use crate::config::ast::*;
 
