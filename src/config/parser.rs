@@ -41,6 +41,7 @@ fn parse_exp(pair: pest::iterators::Pair<Rule>) -> Exp {
         Rule::Exp => parse_exp(pair.into_inner().next().unwrap()),
         Rule::IntExp => parse_int_exp(pair),
         Rule::StringExp => parse_string_exp(pair),
+        Rule::ArrayExp => parse_array_exp(pair),
         unknown => panic!("unknown exp: {:?}", unknown),
     }
 }
@@ -54,6 +55,11 @@ fn parse_string_exp(pair: pest::iterators::Pair<Rule>) -> Exp {
     let content_pair = pair.into_inner().next().unwrap();
     let content = String::from(content_pair.as_str());
     Exp::new(Value::Str(content))
+}
+
+fn parse_array_exp(pair: pest::iterators::Pair<Rule>) -> Exp {
+    let vec = pair.into_inner().map(|p| parse_exp(p)).collect();
+    Exp::new(Value::Array(vec))
 }
 
 fn parse_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
@@ -154,6 +160,7 @@ fn parse_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
         Rule::Type => parse_ty(pair.into_inner().next().unwrap()),
         Rule::TypeId => Ty::Name(String::from(pair.as_str())),
         Rule::PrimitiveType => parse_primitive_ty(pair),
+        Rule::CollectionType => parse_collection_ty(pair),
         unknown => panic!("unknown type: {:?}", unknown),
     }
 }
@@ -166,5 +173,16 @@ fn parse_primitive_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
         "i64" => Ty::Int(64),
         "str" => Ty::Str,
         unknown => panic!("unknown primitive type: {:?}", unknown),
+    }
+}
+
+fn parse_collection_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
+    let mut pairs = pair.into_inner();
+    let id = pairs.next().unwrap().as_str();
+    let ty_pair = pairs.next().unwrap();
+    let ty = Type::new(parse_ty(ty_pair));
+    match id {
+        "arr" => Ty::Array(Box::new(ty)),
+        unknown => panic!("unknown collection type: {:?}", unknown),
     }
 }

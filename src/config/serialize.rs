@@ -9,7 +9,7 @@ macro_rules! serialize_kind {
     };
 }
 
-impl Serialize for Ty {
+impl Serialize for Ty<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -30,6 +30,12 @@ impl Serialize for Ty {
             Self::Str => {
                 let mut state = serializer.serialize_struct("StrTy", 1)?;
                 serialize_kind!(state; "Str");
+                state.end()
+            }
+            Self::Array(t) => {
+                let mut state = serializer.serialize_struct("Array", 2)?;
+                serialize_kind!(state; "Array");
+                state.serialize_field("type", t)?;
                 state.end()
             }
         }
@@ -115,7 +121,7 @@ macro_rules! serialize_value {
     };
 }
 
-impl Serialize for Value {
+impl Serialize for Value<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -131,6 +137,12 @@ impl Serialize for Value {
                 let mut state = serializer.serialize_struct("StrValue", 2)?;
                 serialize_kind!(state; "Str");
                 serialize_value!(state; s);
+                state.end()
+            }
+            Self::Array(v) => {
+                let mut state = serializer.serialize_struct("Array", 2)?;
+                serialize_kind!(state; "Array");
+                serialize_value!(state; v);
                 state.end()
             }
         }

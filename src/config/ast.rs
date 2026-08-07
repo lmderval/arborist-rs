@@ -1,19 +1,20 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub enum Ty {
+pub enum Ty<'a> {
     Name(String),
     Int(u8),
     Str,
+    Array(Box<Type<'a>>),
 }
 
 pub struct Type<'a> {
     pub dec: Option<&'a Dec<'a>>,
-    pub ty: Ty,
+    pub ty: Ty<'a>,
 }
 
 impl<'a> Type<'a> {
-    pub fn new(ty: Ty) -> Self {
+    pub fn new(ty: Ty<'a>) -> Self {
         Self { dec: None, ty: ty }
     }
 
@@ -47,18 +48,19 @@ pub enum Dec<'a> {
     },
 }
 
-pub enum Value {
+pub enum Value<'a> {
     Int(i64),
     Str(String),
+    Array(Vec<Exp<'a>>),
 }
 
 pub struct Exp<'a> {
-    pub ty: Option<&'a Type<'a>>,
-    pub value: Value,
+    pub ty: Option<Type<'a>>,
+    pub value: Value<'a>,
 }
 
 impl<'a> Exp<'a> {
-    pub fn new(value: Value) -> Self {
+    pub fn new(value: Value<'a>) -> Self {
         Self {
             ty: None,
             value: value,

@@ -33,10 +33,33 @@ impl VoidVisitor for PrettyPrinter {
         self.output.push_str(";\n\n");
     }
 
-    fn visit_value(&mut self, value: &Value) {
-        match value {
-            Value::Int(n) => self.output.push_str(&format!("{}", n)),
-            Value::Str(s) => self.output.push_str(&format!("\"{}\"", s)),
+    fn visit_int_val(&mut self, val: &i64) {
+        self.output.push_str(&format!("{}", val));
+    }
+
+    fn visit_string_val(&mut self, val: &String) {
+        self.output.push_str(&format!("\"{}\"", val))
+    }
+
+    fn visit_array_val(&mut self, val: &Vec<Exp>) {
+        match val {
+            v if v.is_empty() => self.output.push_str("[]"),
+            v if v.len() == 1 => {
+                self.output.push_str("[ ");
+                val.get(0).iter().for_each(|e| self.visit_exp(e));
+                self.output.push_str(" ]");
+            }
+            _ => {
+                self.output.push_str("[\n");
+                self.indent += 1;
+                val.iter().for_each(|e| {
+                    self.output.push_str(&self.indent_str());
+                    self.visit_exp(e);
+                    self.output.push_str(",\n");
+                });
+                self.indent -= 1;
+                self.output.push_str(&format!("{}]", self.indent_str()));
+            }
         }
     }
 
@@ -121,5 +144,11 @@ impl VoidVisitor for PrettyPrinter {
 
     fn visit_str_ty(&mut self) {
         self.output.push_str("str");
+    }
+
+    fn visit_array_ty(&mut self, ty: &Type) {
+        self.output.push_str("arr<");
+        self.visit_type(ty);
+        self.output.push('>');
     }
 }

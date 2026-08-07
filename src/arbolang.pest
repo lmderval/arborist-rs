@@ -2,7 +2,7 @@ Config = _{ SOI ~ Var* ~ Dec* ~ EOI }
 
 Var = { VarId ~ "=" ~ Exp ~ ";" }
 
-Exp = { IntExp | StringExp }
+Exp = { IntExp | StringExp | ArrayExp }
 
 IntExp = @{ ASCII_DIGIT+ }
 
@@ -12,6 +12,8 @@ StringContent = @{ (
       (!("\"" | "\\") ~ ANY)
     | ("\\" ~ ("\\" | "\""))
 )* }
+
+ArrayExp = { "[" ~ (Exp ~ ("," ~ Exp)* ~ ","?)? ~ "]" }
 
 Dec = { NodeDec | EnumDec }
 
@@ -33,9 +35,13 @@ PrimitiveAttrMod = { ("readable" | "writable" | "mutable")? }
 
 NodeBody = { AttrDec* }
 
-Type = { TypeId | PrimitiveType }
+Type = { TypeId | PrimitiveType | CollectionType }
 
 PrimitiveType = { "i8" | "i16" | "i32" | "i64" | "str" }
+
+CollectionType = { CollectionId ~ "<" ~ Type ~ ">" }
+
+CollectionId = { "arr" }
 
 VarId = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | "_")* }
 

@@ -1,6 +1,11 @@
 # Configuration variables
 templates_dir = "./";
 
+node_templates = [
+  "node.cc.jinja",
+  "node.hh.jinja",
+];
+
 # Enums creation
 enum Operator {
   PLUS,

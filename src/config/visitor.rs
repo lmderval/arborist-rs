@@ -14,7 +14,21 @@ pub trait VoidVisitor {
         self.visit_value(&exp.value);
     }
 
-    fn visit_value(&mut self, _value: &Value) {}
+    fn visit_value(&mut self, value: &Value) {
+        match value {
+            Value::Int(n) => self.visit_int_val(n),
+            Value::Str(s) => self.visit_string_val(s),
+            Value::Array(v) => self.visit_array_val(v),
+        }
+    }
+
+    fn visit_int_val(&mut self, _val: &i64) {}
+
+    fn visit_string_val(&mut self, _val: &String) {}
+
+    fn visit_array_val(&mut self, val: &Vec<Exp>) {
+        val.iter().for_each(|e| self.visit_exp(e));
+    }
 
     fn visit_dec(&mut self, dec: &Dec) {
         match &dec {
@@ -44,6 +58,7 @@ pub trait VoidVisitor {
             Ty::Name(name) => self.visit_name_ty(name),
             Ty::Int(size) => self.visit_int_ty(size),
             Ty::Str => self.visit_str_ty(),
+            Ty::Array(ty) => self.visit_array_ty(ty),
         }
     }
 
@@ -52,4 +67,8 @@ pub trait VoidVisitor {
     fn visit_int_ty(&mut self, _size: &u8) {}
 
     fn visit_str_ty(&mut self) {}
+
+    fn visit_array_ty(&mut self, ty: &Type) {
+        self.visit_type(ty);
+    }
 }
