@@ -1,0 +1,7 @@
+#pragma once
+
+#include "fwd.hh"
+
+{% for dec in config.decs if dec.kind == "Node" %}
+#include "{{ dec.name | snakecase }}.hh"
+{% endfor %}

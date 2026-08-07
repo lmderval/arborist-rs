@@ -4,6 +4,7 @@ use std::{env, fs};
 use minijinja::{context, path_loader, Environment, Error, Template, Value};
 
 use crate::config::ast::{self, Config};
+use crate::render::convert_case;
 
 const TEMPLATE_EXTS: [&str; 3] = [".jinja", ".jinja2", ".j2"];
 
@@ -40,9 +41,9 @@ where
     }
 }
 
-fn prepare_env(env: &mut Environment, config: &Config) {
-    env.set_lstrip_blocks(true);
-    env.set_trim_blocks(true);
+fn create_loaders(
+    config: &Config,
+) -> Vec<impl Fn(&str) -> Result<Option<String>, Error> + 'static> {
     let mut loaders = Vec::new();
     if let Ok(dir) = env::var("TEMPLATES_DIR") {
         loaders.push(path_loader(dir.into()));
@@ -61,6 +62,20 @@ fn prepare_env(env: &mut Environment, config: &Config) {
             loaders.push(path_loader(dir));
         }
     }
+    loaders
+}
+
+fn prepare_env(env: &mut Environment, config: &Config) {
+    env.set_lstrip_blocks(true);
+    env.set_trim_blocks(true);
+
+    env.add_filter("snakecase", convert_case::to_snakecase);
+    env.add_filter("kebabcase", convert_case::to_kebabcase);
+    env.add_filter("uppercase", convert_case::to_uppercase);
+    env.add_filter("pascalcase", convert_case::to_pascalcase);
+    env.add_filter("camelcase", convert_case::to_camelcase);
+
+    let loaders = create_loaders(config);
     env.set_loader(multi_loader(loaders));
 }
 
