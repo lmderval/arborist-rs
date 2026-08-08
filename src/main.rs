@@ -27,7 +27,7 @@ enum Commands {
     /// Render a template from the configuration
     Render {
         #[arg(short, long, value_name = "FILE")]
-        template: PathBuf,
+        template: Option<PathBuf>,
     },
 }
 
@@ -40,6 +40,6 @@ fn main() {
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print_config(&config),
-        Commands::Render { template } => renderer::render(&config, &Some(template)),
+        Commands::Render { template } => renderer::render(&config, &template),
     }
 }

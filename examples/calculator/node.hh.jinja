@@ -1,0 +1,16 @@
+{% macro render_parents() %}
+    {% for parent in node.parents | map(attribute="ty.name") +%}
+    {{ ':' if loop.first else ',' }} {{ parent }}
+    {%- endfor %}
+{% endmacro -%}
+
+/**
+ * \file {{ filename }}
+ * \brief Definition of {{ node.name }}.
+ */
+
+#pragma once
+
+#include "fwd.hh"
+
+class {{ node.name }}{{ render_parents() }} {};

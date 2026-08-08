@@ -3,7 +3,7 @@ use std::{env, fs};
 
 use minijinja::{context, path_loader, Environment, Error, Template, Value};
 
-use crate::config::ast::{self, Config};
+use crate::config::ast::{self, Config, Dec};
 use crate::render::convert_case;
 
 const TEMPLATE_EXTS: [&str; 3] = [".jinja", ".jinja2", ".j2"];
@@ -80,21 +80,38 @@ fn prepare_env(env: &mut Environment, config: &Config) {
 }
 
 fn load_template<'a>(env: &'a mut Environment, template: &PathBuf) -> Template<'a, 'a> {
-    let source = fs::read_to_string(template).expect("cannot read file");
     let name = input_name(template);
-    env.add_template_owned(name.clone(), source)
-        .expect("unable to load template");
+    if let Err(_) = env.get_template(&name) {
+        let source = fs::read_to_string(template).expect("cannot read file");
+        env.add_template_owned(name.clone(), source)
+            .expect("unable to load template");
+    }
     env.get_template(&name).unwrap()
 }
 
-fn render_template(template: &Template, ctx: &Value) -> String {
-    template.render(ctx).expect("unable to render template")
-}
-
-fn build_context(config: &Config) -> Value {
-    context! {
-        config => config,
+fn find_node_templates<'a>(config: &'a Config<'a>) -> Vec<&'a str> {
+    if let Some(ast::Var {
+        exp:
+            ast::Exp {
+                value: ast::Value::Array(node_templates),
+                ..
+            },
+        ..
+    }) = config.vars.get("node_templates")
+    {
+        let templates = node_templates
+            .iter()
+            .filter_map(|node_template| match node_template {
+                ast::Exp {
+                    value: ast::Value::Str(template),
+                    ..
+                } => Some(template.as_str()),
+                _ => None,
+            })
+            .collect();
+        return templates;
     }
+    Vec::new()
 }
 
 fn remove_template_extension(basename: &str) -> &str {
@@ -108,21 +125,59 @@ fn remove_template_extension(basename: &str) -> &str {
     basename
 }
 
+fn extract_extension(basename: &str) -> &str {
+    match basename.find('.') {
+        Some(i) => &basename[i..basename.len()],
+        None => "",
+    }
+}
+
+fn build_name(name: &str, ext: &str) -> String {
+    format!("{}{}", convert_case::to_snakecase(name), ext)
+}
+
+fn build_context(filename: &str, config: &Config, node: Option<&Dec>) -> Value {
+    context! {
+        filename => filename,
+        config => config,
+        node => node,
+    }
+}
+
+fn render_template(name: &str, template: &Template, ctx: &Value) {
+    let rendered = template.render(ctx).expect("unable to render template");
+    println!("{}:\n{}", name, rendered);
+}
+
+fn render_templates(env: &mut Environment, config: &Config) {
+    if let Some(path) = &config.path {
+        let parent = path.parent().unwrap();
+        let templates = find_node_templates(config);
+        for template in templates {
+            for (name, node) in config.decs.iter().filter_map(|d| match d {
+                Dec::Node { name, .. } => Some((name, d)),
+                _ => None,
+            }) {
+                let tmpl = load_template(env, &parent.join(template));
+                let ext = extract_extension(remove_template_extension(tmpl.name()));
+                let filename = build_name(name, ext);
+                let ctx = build_context(&filename, config, Some(node));
+                render_template(&filename, &tmpl, &ctx);
+            }
+        }
+    }
+}
+
 pub fn render(config: &Config, template: &Option<PathBuf>) {
     let mut env = Environment::new();
     prepare_env(&mut env, config);
-    let mut to_render = Vec::new();
     match template {
         Some(t) => {
             let tmpl = load_template(&mut env, t);
-            let name = remove_template_extension(tmpl.name());
-            let ctx = build_context(config);
-            to_render.push((String::from(name), tmpl, ctx))
+            let filename = remove_template_extension(tmpl.name());
+            let ctx = build_context(&filename, config, None);
+            render_template(filename, &tmpl, &ctx);
         }
-        None => {}
+        None => render_templates(&mut env, config),
     }
-    to_render
-        .iter()
-        .map(|(n, t, c)| (n, render_template(t, c)))
-        .for_each(|(n, r)| println!("{}:\n{}", n, r));
 }
