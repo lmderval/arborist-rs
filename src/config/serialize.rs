@@ -9,7 +9,7 @@ macro_rules! serialize_kind {
     };
 }
 
-impl Serialize for Ty<'_> {
+impl Serialize for Ty {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -42,7 +42,7 @@ impl Serialize for Ty<'_> {
     }
 }
 
-impl Serialize for Type<'_> {
+impl Serialize for Type {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -78,7 +78,7 @@ impl Serialize for AttrMod {
     }
 }
 
-impl Serialize for Dec<'_> {
+impl Serialize for Dec {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -121,7 +121,7 @@ macro_rules! serialize_value {
     };
 }
 
-impl Serialize for Value<'_> {
+impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -149,7 +149,7 @@ impl Serialize for Value<'_> {
     }
 }
 
-impl Serialize for Exp<'_> {
+impl Serialize for Exp {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -160,7 +160,7 @@ impl Serialize for Exp<'_> {
     }
 }
 
-impl Serialize for Var<'_> {
+impl Serialize for Var {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

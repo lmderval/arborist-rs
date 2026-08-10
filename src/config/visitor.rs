@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::config::ast::*;
 
 pub trait VoidVisitor {
@@ -30,8 +32,8 @@ pub trait VoidVisitor {
         val.iter().for_each(|e| self.visit_exp(e));
     }
 
-    fn visit_dec(&mut self, dec: &Dec) {
-        match &dec {
+    fn visit_dec(&mut self, dec: &Rc<Dec>) {
+        match &**dec {
             Dec::Node {
                 name,
                 parents,
@@ -42,18 +44,18 @@ pub trait VoidVisitor {
         }
     }
 
-    fn visit_node_dec(&mut self, _name: &String, parents: &Vec<Type>, decs: &Vec<Dec>) {
+    fn visit_node_dec(&mut self, _name: &String, parents: &Vec<Rc<Type>>, decs: &Vec<Rc<Dec>>) {
         parents.iter().for_each(|p| self.visit_type(p));
         decs.iter().for_each(|d| self.visit_dec(d));
     }
 
     fn visit_enum_dec(&mut self, _name: &String, _values: &Vec<String>) {}
 
-    fn visit_attr_dec(&mut self, _name: &String, _modifier: &AttrMod, ty: &Type) {
+    fn visit_attr_dec(&mut self, _name: &String, _modifier: &AttrMod, ty: &Rc<Type>) {
         self.visit_type(ty);
     }
 
-    fn visit_type(&mut self, ty: &Type) {
+    fn visit_type(&mut self, ty: &Rc<Type>) {
         match &ty.ty {
             Ty::Name(name) => self.visit_name_ty(name),
             Ty::Int(size) => self.visit_int_ty(size),
@@ -68,7 +70,7 @@ pub trait VoidVisitor {
 
     fn visit_str_ty(&mut self) {}
 
-    fn visit_array_ty(&mut self, ty: &Type) {
+    fn visit_array_ty(&mut self, ty: &Rc<Type>) {
         self.visit_type(ty);
     }
 }

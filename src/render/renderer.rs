@@ -154,7 +154,7 @@ fn render_templates(env: &mut Environment, config: &Config) {
         let parent = path.parent().unwrap();
         let templates = find_node_templates(config);
         for template in templates {
-            for (name, node) in config.decs.iter().filter_map(|d| match d {
+            for (name, node) in config.decs.iter().filter_map(|d| match &**d {
                 Dec::Node { name, .. } => Some((name, d)),
                 _ => None,
             }) {

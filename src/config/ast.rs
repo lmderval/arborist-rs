@@ -1,24 +1,25 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::rc::{Rc, Weak};
 
-pub enum Ty<'a> {
+pub enum Ty {
     Name(String),
     Int(u8),
     Str,
-    Array(Box<Type<'a>>),
+    Array(Rc<Type>),
 }
 
-pub struct Type<'a> {
-    pub dec: Option<&'a Dec<'a>>,
-    pub ty: Ty<'a>,
+pub struct Type {
+    pub dec: Option<Weak<Dec>>,
+    pub ty: Ty,
 }
 
-impl<'a> Type<'a> {
-    pub fn new(ty: Ty<'a>) -> Self {
+impl Type {
+    pub fn new(ty: Ty) -> Self {
         Self { dec: None, ty: ty }
     }
 
-    pub fn define(&'a mut self, dec: &'a Dec<'a>) {
+    pub fn define(&mut self, dec: Weak<Dec>) {
         self.dec = Some(dec);
     }
 }
@@ -31,11 +32,11 @@ pub enum AttrMod {
     Access(bool, bool, bool),
 }
 
-pub enum Dec<'a> {
+pub enum Dec {
     Node {
         name: String,
-        parents: Vec<Type<'a>>,
-        decs: Vec<Dec<'a>>,
+        parents: Vec<Rc<Type>>,
+        decs: Vec<Rc<Dec>>,
     },
     Enum {
         name: String,
@@ -44,37 +45,41 @@ pub enum Dec<'a> {
     Attr {
         name: String,
         modifier: AttrMod,
-        ty: Type<'a>,
+        ty: Rc<Type>,
     },
 }
 
-pub enum Value<'a> {
+pub enum Value {
     Int(i64),
     Str(String),
-    Array(Vec<Exp<'a>>),
+    Array(Vec<Exp>),
 }
 
-pub struct Exp<'a> {
-    pub ty: Option<Type<'a>>,
-    pub value: Value<'a>,
+pub struct Exp {
+    pub ty: Option<Weak<Type>>,
+    pub value: Value,
 }
 
-impl<'a> Exp<'a> {
-    pub fn new(value: Value<'a>) -> Self {
+impl Exp {
+    pub fn new(value: Value) -> Self {
         Self {
             ty: None,
             value: value,
         }
     }
+
+    pub fn type_exp(&mut self, ty: Weak<Type>) {
+        self.ty = Some(ty);
+    }
 }
 
-pub struct Var<'a> {
+pub struct Var {
     pub name: String,
-    pub exp: Exp<'a>,
+    pub exp: Exp,
 }
 
-impl<'a> Var<'a> {
-    pub fn new(name: String, exp: Exp<'a>) -> Self {
+impl Var {
+    pub fn new(name: String, exp: Exp) -> Self {
         Self {
             name: name,
             exp: exp,
@@ -84,12 +89,12 @@ impl<'a> Var<'a> {
 
 pub struct Config<'a> {
     pub path: Option<&'a PathBuf>,
-    pub decs: Vec<Dec<'a>>,
-    pub vars: HashMap<String, Var<'a>>,
+    pub decs: Vec<Rc<Dec>>,
+    pub vars: HashMap<String, Var>,
 }
 
 impl<'a> Config<'a> {
-    pub fn new(decs: Vec<Dec<'a>>, vars: HashMap<String, Var<'a>>) -> Self {
+    pub fn new(decs: Vec<Rc<Dec>>, vars: HashMap<String, Var>) -> Self {
         Self {
             path: None,
             decs: decs,
