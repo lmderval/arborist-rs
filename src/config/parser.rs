@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use pest::{self, Parser};
 use pest_derive;
@@ -15,7 +15,7 @@ pub fn parse(source: &str) -> std::result::Result<Config<'_>, pest::error::Error
     let pairs = ConfigParser::parse(Rule::Config, source)?;
     for pair in pairs {
         match pair.as_rule() {
-            Rule::Dec => decs.push(Rc::new(parse_dec(pair))),
+            Rule::Dec => decs.push(Rc::new(RefCell::new(parse_dec(pair)))),
             Rule::Var => {
                 let var = parse_var(pair);
                 vars.insert(var.name.clone(), var);
@@ -79,12 +79,12 @@ fn parse_node_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
     let parents_pair = pairs.next().unwrap();
     let parents = parents_pair
         .into_inner()
-        .map(|p| Rc::new(Type::new(parse_ty(p))))
+        .map(|p| Rc::new(RefCell::new(Type::new(parse_ty(p)))))
         .collect();
     let decs_pair = pairs.next().unwrap();
     let decs = decs_pair
         .into_inner()
-        .map(|p| Rc::new(parse_dec(p)))
+        .map(|p| Rc::new(RefCell::new(parse_dec(p))))
         .collect();
     Dec::Node {
         name: name,
@@ -115,7 +115,7 @@ fn parse_attr_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
     let name_pair = pairs.next().unwrap();
     let name = String::from(name_pair.as_str());
     let ty_pair = pairs.next().unwrap();
-    let ty = Rc::new(Type::new(parse_ty(ty_pair)));
+    let ty = Rc::new(RefCell::new(Type::new(parse_ty(ty_pair))));
     Dec::Attr {
         name: name,
         modifier: modifier,
@@ -183,9 +183,9 @@ fn parse_collection_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
     let mut pairs = pair.into_inner();
     let id = pairs.next().unwrap().as_str();
     let ty_pair = pairs.next().unwrap();
-    let ty = Type::new(parse_ty(ty_pair));
+    let ty = Rc::new(RefCell::new(Type::new(parse_ty(ty_pair))));
     match id {
-        "arr" => Ty::Array(Rc::new(ty)),
+        "arr" => Ty::Array(ty),
         unknown => panic!("unknown collection type: {:?}", unknown),
     }
 }

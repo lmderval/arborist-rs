@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::config::ast::*;
@@ -65,7 +66,12 @@ impl VoidVisitor for PrettyPrinter {
         }
     }
 
-    fn visit_node_dec(&mut self, name: &String, parents: &Vec<Rc<Type>>, decs: &Vec<Rc<Dec>>) {
+    fn visit_node_dec(
+        &mut self,
+        name: &String,
+        parents: &Vec<Rc<RefCell<Type>>>,
+        decs: &Vec<Rc<RefCell<Dec>>>,
+    ) {
         self.output
             .push_str(&format!("{}node {}", self.indent_str(), name));
         match parents {
@@ -110,7 +116,7 @@ impl VoidVisitor for PrettyPrinter {
         self.output.push_str("}\n\n");
     }
 
-    fn visit_attr_dec(&mut self, name: &String, modifier: &AttrMod, ty: &Rc<Type>) {
+    fn visit_attr_dec(&mut self, name: &String, modifier: &AttrMod, ty: &Rc<RefCell<Type>>) {
         let modifier_str = match modifier {
             AttrMod::None => "",
             AttrMod::Readable => "readable ",
@@ -148,7 +154,7 @@ impl VoidVisitor for PrettyPrinter {
         self.output.push_str("str");
     }
 
-    fn visit_array_ty(&mut self, ty: &Rc<Type>) {
+    fn visit_array_ty(&mut self, ty: &Rc<RefCell<Type>>) {
         self.output.push_str("arr<");
         self.visit_type(ty);
         self.output.push('>');

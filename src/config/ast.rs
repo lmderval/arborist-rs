@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
@@ -6,11 +7,11 @@ pub enum Ty {
     Name(String),
     Int(u8),
     Str,
-    Array(Rc<Type>),
+    Array(Rc<RefCell<Type>>),
 }
 
 pub struct Type {
-    pub dec: Option<Weak<Dec>>,
+    pub dec: Option<Weak<RefCell<Dec>>>,
     pub ty: Ty,
 }
 
@@ -19,7 +20,7 @@ impl Type {
         Self { dec: None, ty: ty }
     }
 
-    pub fn define(&mut self, dec: Weak<Dec>) {
+    pub fn define(&mut self, dec: Weak<RefCell<Dec>>) {
         self.dec = Some(dec);
     }
 }
@@ -35,8 +36,8 @@ pub enum AttrMod {
 pub enum Dec {
     Node {
         name: String,
-        parents: Vec<Rc<Type>>,
-        decs: Vec<Rc<Dec>>,
+        parents: Vec<Rc<RefCell<Type>>>,
+        decs: Vec<Rc<RefCell<Dec>>>,
     },
     Enum {
         name: String,
@@ -45,7 +46,7 @@ pub enum Dec {
     Attr {
         name: String,
         modifier: AttrMod,
-        ty: Rc<Type>,
+        ty: Rc<RefCell<Type>>,
     },
 }
 
@@ -56,7 +57,7 @@ pub enum Value {
 }
 
 pub struct Exp {
-    pub ty: Option<Weak<Type>>,
+    pub ty: Option<Weak<RefCell<Type>>>,
     pub value: Value,
 }
 
@@ -68,7 +69,7 @@ impl Exp {
         }
     }
 
-    pub fn type_exp(&mut self, ty: Weak<Type>) {
+    pub fn type_exp(&mut self, ty: Weak<RefCell<Type>>) {
         self.ty = Some(ty);
     }
 }
@@ -89,12 +90,12 @@ impl Var {
 
 pub struct Config<'a> {
     pub path: Option<&'a PathBuf>,
-    pub decs: Vec<Rc<Dec>>,
+    pub decs: Vec<Rc<RefCell<Dec>>>,
     pub vars: HashMap<String, Var>,
 }
 
 impl<'a> Config<'a> {
-    pub fn new(decs: Vec<Rc<Dec>>, vars: HashMap<String, Var>) -> Self {
+    pub fn new(decs: Vec<Rc<RefCell<Dec>>>, vars: HashMap<String, Var>) -> Self {
         Self {
             path: None,
             decs: decs,
