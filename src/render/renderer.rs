@@ -154,17 +154,20 @@ fn render_templates(env: &mut Environment, config: &Config) {
         let parent = path.parent().unwrap();
         let templates = find_node_templates(config);
         for template in templates {
-            for (name, node) in config
+            for node in config
                 .decs
                 .iter()
                 .map(|d| d.borrow())
-                .filter_map(|d| match &*d {
-                    Dec::Node { name, .. } => Some((name.clone(), d)),
-                    _ => None,
+                .filter(|d| match &**d {
+                    Dec::Node { .. } => true,
+                    _ => false,
                 })
             {
                 let tmpl = load_template(env, &parent.join(template));
                 let ext = extract_extension(remove_template_extension(tmpl.name()));
+                let Dec::Node { name, .. } = &*node else {
+                    unreachable!()
+                };
                 let filename = build_name(&name, ext);
                 let ctx = build_context(&filename, config, Some(&*node));
                 render_template(&filename, &tmpl, &ctx);
