@@ -6,9 +6,11 @@ use clap::{Parser, Subcommand};
 use crate::config::parser::parse;
 use crate::config::pretty_printer::PrettyPrinter;
 use crate::render::renderer;
+use crate::typing::resolver::Resolver;
 
 pub mod config;
 pub mod render;
+pub mod typing;
 
 #[derive(Parser)]
 #[command(version, about = "An AST generator for any language", long_about = None)]
@@ -37,6 +39,8 @@ fn main() {
     let unparsed_config = fs::read_to_string(&cli.config).expect("cannot read file");
     let mut config = parse(&unparsed_config).expect("unsuccessful parse");
     config.set_path(&cli.config);
+
+    Resolver::resolve_config(&mut config);
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print_config(&config),
