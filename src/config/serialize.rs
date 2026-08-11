@@ -47,8 +47,9 @@ impl Serialize for Type {
     where
         S: serde_core::Serializer,
     {
-        let mut state = serializer.serialize_struct("Type", 1)?;
+        let mut state = serializer.serialize_struct("Type", 2)?;
         state.serialize_field("ty", &self.ty)?;
+        state.serialize_field("dec", &self.dec)?;
         state.end()
     }
 }
@@ -154,8 +155,9 @@ impl Serialize for Exp {
     where
         S: serde_core::Serializer,
     {
-        let mut state = serializer.serialize_struct("Exp", 1)?;
+        let mut state = serializer.serialize_struct("Exp", 2)?;
         state.serialize_field("value", &self.value)?;
+        state.serialize_field("ty", &self.ty)?;
         state.end()
     }
 }

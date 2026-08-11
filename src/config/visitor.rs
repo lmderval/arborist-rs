@@ -42,19 +42,40 @@ macro_rules! define_void_visitor {
                         parents,
                         decs,
                     } => self.visit_node_dec(name, parents, decs),
-                    Dec::Enum { name, values } => self.visit_enum_dec(name, values),
-                    Dec::Attr { name, modifier, ty } => self.visit_attr_dec(name, modifier, ty),
+                    Dec::Enum {
+                        name,
+                        values,
+                    } => self.visit_enum_dec(name, values),
+                    Dec::Attr {
+                        name,
+                        modifier,
+                        ty,
+                    } => self.visit_attr_dec(name, modifier, ty),
                 }
             }
 
-            fn visit_node_dec(&mut self, _name: &$($mut)? String, parents: &$($mut)? Vec<Rc<RefCell<Type>>>, decs: &$($mut)? Vec<Rc<RefCell<Dec>>>) {
+            fn visit_node_dec(
+                &mut self,
+                _name: &$($mut)? String,
+                parents: &$($mut)? Vec<Rc<RefCell<Type>>>,
+                decs: &$($mut)? Vec<Rc<RefCell<Dec>>>,
+            ) {
                 parents.$iter().for_each(|p| self.visit_type(p));
                 decs.$iter().for_each(|d| self.visit_dec(d));
             }
 
-            fn visit_enum_dec(&mut self, _name: &$($mut)? String, _values: &$($mut)? Vec<String>) {}
+            fn visit_enum_dec(
+                &mut self,
+                _name: &$($mut)? String,
+                _values: &$($mut)? Vec<String>,
+            ) {}
 
-            fn visit_attr_dec(&mut self, _name: &$($mut)? String, _modifier: &$($mut)? AttrMod, ty: &$($mut)? Rc<RefCell<Type>>) {
+            fn visit_attr_dec(
+                &mut self,
+                _name: &$($mut)? String,
+                _modifier: &$($mut)? AttrMod,
+                ty: &$($mut)? Rc<RefCell<Type>>,
+            ) {
                 self.visit_type(ty);
             }
 
