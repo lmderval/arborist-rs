@@ -1,6 +1,39 @@
+{% from "c++/attributes" import
+    render_read_attribute,
+    render_write_attribute,
+    render_mutate_attribute
+%}
+{% from "c++/types" import
+    render_read_type,
+    render_write_type,
+    render_mutate_type
+-%}
+
+{% set attributes = node.decs | selectattr("kind", "eq", "Attr") | list -%}
+
 /**
  * \file {{ filename }}
  * \brief Implementation of {{ node.name }}.
  */
 
 #include "{{ node.name | snakecase }}.hh"
+
+{% for attr in attributes %}
+    {% set mod = attr.modifier %}
+    {% if mod.r %}
+{{ render_read_type(attr.ty) }} {{ node.name }}::{{ attr.name }}_get() const {
+    return {{ render_read_attribute(attr) }};
+}
+    {% endif %}
+    {% if mod.w %}
+void {{ node.name }}::{{ attr.name }}_set(
+{{- render_write_type(attr.ty) }} {{ attr.name }}) {
+    {{ attr.name }}_ = {{ render_write_attribute(attr) }};
+}
+    {% endif %}
+    {% if mod.m %}
+{{ render_mutate_type(attr.ty) }} {{ node.name }}::{{ attr.name }}_mut() {
+    return {{ render_read_attribute(attr) }};
+}
+    {% endif %}
+{% endfor %}

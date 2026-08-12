@@ -1,0 +1,62 @@
+{% set INT_TY = {
+    8: "int_least8_t",
+    16: "int_least16_t",
+    32: "int_least32_t",
+    64: "int_least64_t",
+} -%}
+
+{% set STR_TY = "std::string" -%}
+
+{% set ARRAY_TY = "std::array<%s>" -%}
+
+{% macro render_store_type(type) %}
+    {% set ty = type.ty %}
+    {% if ty.kind == "Name" %}
+        {% if type.dec.kind == "Node" %}
+std::unique_ptr<{{ ty.name }}>
+        {%- else %}
+{{ ty.name }}
+        {%- endif %}
+    {%- elif ty.kind == "Int" %}
+{{ INT_TY[ty.size] }}
+    {%- elif ty.kind == "Str" %}
+{{ STR_TY }}
+    {%- elif ty.kind == "Array" %}
+{{ ARRAY_TY | format(render_store_type(ty.type)) }}
+    {%- endif %}
+{% endmacro -%}
+
+{% macro render_read_type(type) %}
+    {% set ty = type.ty %}
+    {% if ty.kind == "Name" %}
+        {% set dec = type.dec %}
+        {% if dec.kind == "Enum" %}
+{{ ty.name }}
+        {%- else %}
+const {{ ty.name }}&
+        {%- endif %}
+    {%- elif ty.kind == "Int" %}
+{{ INT_TY[ty.size] }}
+    {%- elif ty.kind == "Str" %}
+const {{ STR_TY }}&
+    {%- elif ty.kind == "Array" %}
+const {{ ARRAY_TY | format(render_store_type(ty.type)) }}&
+    {%- endif %}
+{% endmacro -%}
+
+{% macro render_write_type(type) %}
+{{ render_store_type(type) }}
+{%- endmacro -%}
+
+{% macro render_mutate_type(type) %}
+    {% set ty = type.ty %}
+    {% if ty.kind == "Name" %}
+{{ ty.name }}&
+    {%- elif ty.kind == "Int" %}
+{{ INT_TY[ty.size] }}&
+    {%- elif ty.kind == "Str" %}
+{{ STR_TY }}&
+    {%- elif ty.kind == "Array" %}
+{{ ARRAY_TY | format(render_store_type(ty.type)) }}&
+    {%- endif %}
+{% endmacro -%}

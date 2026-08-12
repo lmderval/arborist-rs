@@ -71,8 +71,8 @@ impl Serialize for AttrMod {
         match self {
             Self::None => serialize_access!(state; [false, false, false]),
             Self::Readable => serialize_access!(state; [true, false, false]),
-            Self::Writable => serialize_access!(state; [false, true, false]),
-            Self::Mutable => serialize_access!(state; [false, false, true]),
+            Self::Writable => serialize_access!(state; [true, true, false]),
+            Self::Mutable => serialize_access!(state; [true, true, true]),
             Self::Access(r, w, m) => serialize_access!(state; [r, w, m]),
         };
         state.end()

@@ -1,0 +1,24 @@
+{% macro render_read_attribute(attr) %}
+    {% set type = attr.ty %}
+    {% if type.ty.kind == "Name" and type.dec.kind == "Node" %}
+*{{ attr.name }}_
+    {%- else %}
+{{ attr.name }}_
+    {%- endif %}
+{% endmacro -%}
+
+{% macro render_write_attribute(attr) %}
+    {% set type = attr.ty %}
+    {% set ty = type.ty %}
+    {% if (ty.kind == "Name" and type.dec.kind == "Node")
+        or ty.kind == "Str"
+        or ty.kind == "Array" %}
+std::move({{ attr.name }})
+    {%- else %}
+{{ attr.name }}
+    {%- endif %}
+{% endmacro -%}
+
+{% macro render_mutate_attribute(attr) %}
+{{ render_read_attribute(attr) }}
+{%- endmacro %}

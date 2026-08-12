@@ -1,3 +1,12 @@
+{% from "c++/types" import
+    render_store_type,
+    render_read_type,
+    render_write_type,
+    render_mutate_type
+-%}
+
+{% set attributes = node.decs | selectattr("kind", "eq", "Attr") | list -%}
+
 {% macro render_parents() %}
     {% for parent in node.parents | map(attribute="ty.name") +%}
     {{ ':' if loop.first else ',' }} {{ parent }}
@@ -11,6 +20,34 @@
 
 #pragma once
 
+#include <cstdint>
+#include <memory>
+#include <string>
+
 #include "fwd.hh"
 
-class {{ node.name }}{{ render_parents() }} {};
+class {{ node.name }}{{ render_parents() }} {
+{%- if attributes +%}
+public:
+    {% for attr in attributes %}
+        {% set mod = attr.modifier %}
+        {% if mod.r %}
+    /// Getter for {{ attr.name }}.
+    {{ render_read_type(attr.ty) }} {{ attr.name }}_get() const;
+        {% endif %}
+        {% if mod.w %}
+    /// Setter for {{ attr.name }}.
+    void {{ attr.name }}_set({{ render_write_type(attr.ty) }} {{ attr.name }});
+        {% endif %}
+        {% if mod.m %}
+    /// Mutator for {{ attr.name }}.
+    {{ render_mutate_type(attr.ty) }} {{ attr.name }}_mut();
+        {% endif %}
+    {% endfor %}
+
+private:
+    {% for attr in attributes %}
+    {{ render_store_type(attr.ty) }} {{ attr.name }}_;
+    {% endfor %}
+{% endif %}
+};
