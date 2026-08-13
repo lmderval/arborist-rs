@@ -12,6 +12,7 @@
     {% set ty = type.ty %}
     {% if (ty.kind == "Name" and type.dec.kind == "Node")
         or ty.kind == "Str"
+        or ty.kind == "Loc"
         or ty.kind == "Array" %}
 std::move({{ attr.name }})
     {%- else %}

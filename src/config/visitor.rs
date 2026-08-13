@@ -84,6 +84,7 @@ macro_rules! define_void_visitor {
                     Ty::Name(name) => self.visit_name_ty(name),
                     Ty::Int(size) => self.visit_int_ty(size),
                     Ty::Str => self.visit_str_ty(),
+                    Ty::Loc => self.visit_loc_ty(),
                     Ty::Array(ty) => self.visit_array_ty(ty),
                 }
             }
@@ -93,6 +94,8 @@ macro_rules! define_void_visitor {
             fn visit_int_ty(&mut self, _size: &u8) {}
 
             fn visit_str_ty(&mut self) {}
+
+            fn visit_loc_ty(&mut self) {}
 
             fn visit_array_ty(&mut self, ty: &$($mut)? Rc<RefCell<Type>>) {
                 self.visit_type(ty);

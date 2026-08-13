@@ -13,7 +13,9 @@ enum Operator {
 }
 
 # Nodes creation
-node Exp {}
+node Exp {
+  readable location: loc;
+}
 
 node IntExp(Exp) {
   readable value: i64;

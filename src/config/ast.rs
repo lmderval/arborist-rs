@@ -7,6 +7,7 @@ pub enum Ty {
     Name(String),
     Int(u8),
     Str,
+    Loc,
     Array(Rc<RefCell<Type>>),
 }
 

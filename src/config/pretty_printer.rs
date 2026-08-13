@@ -154,6 +154,10 @@ impl VoidVisitor for PrettyPrinter {
         self.output.push_str("str");
     }
 
+    fn visit_loc_ty(&mut self) {
+        self.output.push_str("loc");
+    }
+
     fn visit_array_ty(&mut self, ty: &Rc<RefCell<Type>>) {
         self.output.push_str("arr<");
         self.visit_type(ty);

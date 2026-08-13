@@ -32,6 +32,11 @@ impl Serialize for Ty {
                 serialize_kind!(state; "Str");
                 state.end()
             }
+            Self::Loc => {
+                let mut state = serializer.serialize_struct("LocTy", 1)?;
+                serialize_kind!(state; "Loc");
+                state.end()
+            }
             Self::Array(t) => {
                 let mut state = serializer.serialize_struct("Array", 2)?;
                 serialize_kind!(state; "Array");

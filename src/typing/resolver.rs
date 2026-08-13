@@ -40,7 +40,7 @@ impl MutVoidVisitor for Resolver {
                 };
                 ty.define(dec.clone());
             }
-            Ty::Int(_) | Ty::Str => {}
+            Ty::Int(_) | Ty::Str | Ty::Loc => {}
             Ty::Array(ty) => self.visit_type(ty),
         }
     }

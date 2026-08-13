@@ -175,6 +175,7 @@ fn parse_primitive_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
         "i32" => Ty::Int(32),
         "i64" => Ty::Int(64),
         "str" => Ty::Str,
+        "loc" => Ty::Loc,
         unknown => panic!("unknown primitive type: {:?}", unknown),
     }
 }
