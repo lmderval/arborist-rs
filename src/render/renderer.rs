@@ -5,6 +5,7 @@ use minijinja::{context, path_loader, Environment, Error, Template, Value};
 
 use crate::config::ast::{self, Config, Dec};
 use crate::render::convert_case;
+use crate::render::joiner::joiner;
 
 const TEMPLATE_EXTS: [&str; 3] = [".jinja", ".jinja2", ".j2"];
 
@@ -74,6 +75,8 @@ fn prepare_env(env: &mut Environment, config: &Config) {
     env.add_filter("uppercase", convert_case::to_uppercase);
     env.add_filter("pascalcase", convert_case::to_pascalcase);
     env.add_filter("camelcase", convert_case::to_camelcase);
+
+    env.add_function("joiner", joiner);
 
     let loaders = create_loaders(config);
     env.set_loader(multi_loader(loaders));

@@ -1,0 +1,22 @@
+{% from "c++/types" import
+    render_write_type,
+    render_write_attribute
+-%}
+
+{% macro render_default_ctor_parameters(node, comma=joiner(", ")) %}
+    {% for parent in node.parents | map(attribute="dec") %}
+{{ render_default_ctor_parameters(parent, comma) }}
+    {%- endfor %}
+    {% for attr in node.decs | selectattr("kind", "eq", "Attr") %}
+{{ comma() }}{{ render_write_type(attr.ty) }} {{ attr.name }}
+    {%- endfor %}
+{% endmacro -%}
+
+{% macro render_default_ctor_call_arguments(node, comma=joiner(", ")) %}
+    {% for parent in node.parents | map(attribute="dec") %}
+{{ render_default_ctor_call_arguments(parent, comma) }}
+    {%- endfor %}
+    {% for attr in node.decs | selectattr("kind", "eq", "Attr") %}
+{{ comma() }}{{ render_write_attribute(attr) }}
+    {%- endfor %}
+{% endmacro -%}

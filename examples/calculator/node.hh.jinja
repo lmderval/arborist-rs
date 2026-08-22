@@ -1,3 +1,6 @@
+{% from "c++/constructors" import
+    render_default_ctor_parameters
+%}
 {% from "c++/types" import
     render_store_type,
     render_read_type,
@@ -8,8 +11,9 @@
 {% set attributes = node.decs | selectattr("kind", "eq", "Attr") | list -%}
 
 {% macro render_parents() %}
+    {% set sep = joiner(",", ":") %}
     {% for parent in node.parents | map(attribute="ty.name") +%}
-    {{ ':' if loop.first else ',' }} {{ parent }}
+    {{ sep() }} {{ parent }}
     {%- endfor %}
 {% endmacro -%}
 
@@ -28,7 +32,10 @@
 #include "location.hh"
 
 class {{ node.name }}{{ render_parents() }} {
-{%- if attributes +%}
+public:
+    {{ node.name }}({{ render_default_ctor_parameters(node) }});
+
+{% if attributes %}
 public:
     {% for attr in attributes %}
         {% set mod = attr.modifier %}

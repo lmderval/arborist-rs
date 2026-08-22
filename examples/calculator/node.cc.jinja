@@ -3,6 +3,10 @@
     render_write_attribute,
     render_mutate_attribute
 %}
+{% from "c++/constructors" import
+    render_default_ctor_parameters,
+    render_default_ctor_call_arguments
+%}
 {% from "c++/types" import
     render_read_type,
     render_write_type,
@@ -17,6 +21,19 @@
  */
 
 #include "{{ node.name | snakecase }}.hh"
+
+{{ node.name }}::{{ node.name }}({{ render_default_ctor_parameters(node) }})
+{%- set sep = joiner(",", ":") %}
+{% for parent in node.parents
+                 | map(attribute="dec")
+                 | selectattr("kind", "eq", "Node") +%}
+    {{ sep() }} {{ parent.name }}(
+{{- render_default_ctor_call_arguments(parent) }})
+{%- endfor %}
+{% for attr in attributes +%}
+    {{ sep() }} {{ attr.name }}_({{ render_write_attribute(attr) }})
+{%- endfor %}
+ {}
 
 {% for attr in attributes %}
     {% set mod = attr.modifier %}
