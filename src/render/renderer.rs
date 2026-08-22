@@ -1,5 +1,7 @@
+use std::env;
+use std::fs::{self, File};
+use std::io::Write;
 use std::path::PathBuf;
-use std::{env, fs};
 
 use minijinja::{context, path_loader, Environment, Error, Template, Value};
 
@@ -147,12 +149,17 @@ fn build_context(filename: &str, config: &Config, node: Option<&Dec>) -> Value {
     }
 }
 
-fn render_template(name: &str, template: &Template, ctx: &Value) {
+fn render_template(name: &str, template: &Template, ctx: &Value, in_place: bool) {
     let rendered = template.render(ctx).expect("unable to render template");
-    println!("{}:\n{}", name, rendered);
+    if in_place {
+        let mut file = File::create(name).unwrap();
+        file.write_all(&rendered.into_bytes()).unwrap();
+    } else {
+        println!("{}:\n{}", name, rendered);
+    }
 }
 
-fn render_templates(env: &mut Environment, config: &Config) {
+fn render_templates(env: &mut Environment, config: &Config, in_place: bool) {
     if let Some(path) = &config.path {
         let parent = path.parent().unwrap();
         let templates = find_node_templates(config);
@@ -173,13 +180,13 @@ fn render_templates(env: &mut Environment, config: &Config) {
                 };
                 let filename = build_name(&name, ext);
                 let ctx = build_context(&filename, config, Some(&*node));
-                render_template(&filename, &tmpl, &ctx);
+                render_template(&filename, &tmpl, &ctx, in_place);
             }
         }
     }
 }
 
-pub fn render(config: &Config, template: &Option<PathBuf>) {
+pub fn render(config: &Config, template: &Option<PathBuf>, in_place: bool) {
     let mut env = Environment::new();
     prepare_env(&mut env, config);
     match template {
@@ -187,8 +194,8 @@ pub fn render(config: &Config, template: &Option<PathBuf>) {
             let tmpl = load_template(&mut env, t);
             let filename = remove_template_extension(tmpl.name());
             let ctx = build_context(&filename, config, None);
-            render_template(filename, &tmpl, &ctx);
+            render_template(filename, &tmpl, &ctx, in_place);
         }
-        None => render_templates(&mut env, config),
+        None => render_templates(&mut env, config, in_place),
     }
 }

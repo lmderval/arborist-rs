@@ -31,6 +31,10 @@
 #include "fwd.hh"
 #include "location.hh"
 
+{% for parent in node.parents | map(attribute="ty.name") | map("snakecase") %}
+#include "{{ parent }}.hh"
+{% endfor %}
+
 class {{ node.name }}{{ render_parents() }} {
 public:
     {{ node.name }}({{ render_default_ctor_parameters(node) }});

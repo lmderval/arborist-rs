@@ -30,6 +30,8 @@ enum Commands {
     Render {
         #[arg(short, long, value_name = "FILE")]
         template: Option<PathBuf>,
+        #[arg(short, long)]
+        in_place: bool,
     },
 }
 
@@ -44,6 +46,6 @@ fn main() {
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print_config(&config),
-        Commands::Render { template } => renderer::render(&config, &template),
+        Commands::Render { template, in_place } => renderer::render(&config, &template, in_place),
     }
 }

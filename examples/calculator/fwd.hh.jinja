@@ -10,7 +10,7 @@ enum {{ dec.name }} {
     {% for value in dec.values %}
     {{ value }},
     {% endfor %}
-}
+};
 {% endfor %}
 
 {% for dec in config.decs | selectattr("kind", "eq", "Node") %}
