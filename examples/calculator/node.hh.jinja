@@ -37,7 +37,20 @@
 
 class {{ node.name }}{{ render_parents() }} {
 public:
+    /// Default constructor.
     {{ node.name }}({{ render_default_ctor_parameters(node) }});
+    /// Copy constructor.
+    {{ node.name }}(const {{ node.name }}&) = delete;
+    {{ node.name }}& operator=(const {{ node.name }}&) = delete;
+    /// Move constructor.
+    {{ node.name }}({{ node.name }}&&) = default;
+    {{ node.name }}& operator=({{ node.name }}&&) = default;
+    /// Destructor.
+{% if not node.parents %}
+    virtual ~{{ node.name }}() = 0;
+{% else %}
+    ~{{ node.name }}() override = default;
+{% endif %}
 
 {% if attributes %}
 public:

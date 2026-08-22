@@ -35,6 +35,10 @@
 {%- endfor %}
  {}
 
+{% if not node.parents %}
+{{ node.name }}::~{{ node.name }}() {}
+{% endif %}
+
 {% for attr in attributes %}
     {% set mod = attr.modifier %}
     {% if mod.r %}
