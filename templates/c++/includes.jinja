@@ -1,0 +1,82 @@
+{% macro render_includes(includes) %}
+    {% for include in includes.standard | unique | sort %}
+#include <{{ include }}>
+    {% endfor %}
+
+    {% for include in includes.local | unique | sort %}
+#include "{{ include }}.hh"
+    {% endfor %}
+{% endmacro -%}
+
+{% macro add_type_header_includes(ty, includes) %}
+    {% if ty.ty.kind == "Name" %}
+        {% set includes.local = includes.local + ["fwd"] %}
+        {% if ty.dec.kind == "Node" %}
+            {# std::unique_ptr #}
+            {% set includes.standard = includes.standard + ["memory"] %}
+        {% endif %}
+    {% elif ty.ty.kind == "Int" %}
+        {# int_leastn_t #}
+        {% set includes.standard = includes.standard + ["cstdint"] %}
+    {% elif ty.ty.kind == "Str" %}
+        {# std::string #}
+        {% set includes.standard = includes.standard + ["string"] %}
+    {% elif ty.ty.kind == "Loc" %}
+        {# location #}
+        {% set includes.local = includes.local + ["location"] %}
+    {% elif ty.ty.kind == "Array" %}
+        {# std::array #}
+        {% set includes.standard = includes.standard + ["array"] %}
+        {% do add_type_header_includes(ty.ty.type, includes) %}
+    {% endif %}
+{% endmacro -%}
+
+{% macro compute_header_includes(node, includes) %}
+    {% set includes.local = includes.local + (
+        node.parents
+        | map(attribute="ty.name")
+        | map("snakecase")
+    ) %}
+    {% for ty in node.decs
+                 | selectattr("kind", "eq", "Attr")
+                 | map(attribute="ty") %}
+        {% do add_type_header_includes(ty, includes) %}
+    {% endfor %}
+{% endmacro -%}
+
+{% macro render_header_includes(node, standard=[], local=[]) %}
+    {% set includes = namespace(
+        standard=standard,
+        local=local,
+    ) %}
+    {% do compute_header_includes(node, includes) %}
+{{ render_includes(includes) }}
+{% endmacro -%}
+
+{% macro compute_implementation_includes(node, includes) %}
+    {% for parent in node.parents | map(attribute="dec") %}
+{{ compute_implementation_includes(parent, includes) }}
+    {% endfor %}
+    {% set types = node.decs
+                   | selectattr("kind", "eq", "Attr")
+                   | map(attribute="ty") %}
+    {% if (
+        types | selectattr("ty.kind", "in", ["Str", "Loc", "Array"])
+    ) or (
+        types
+        | selectattr("ty.kind", "eq", "Name")
+        | selectattr("dec.kind", "eq", "Node")
+    ) %}
+        {# std::move #}
+        {% set includes.standard = includes.standard + ["utility"] %}
+    {% endif %}
+{% endmacro -%}
+
+{% macro render_implementation_includes(node, standard=[], local=[]) %}
+    {% set includes = namespace(
+        standard=standard,
+        local=local,
+    ) %}
+    {% do compute_implementation_includes(node, includes) %}
+{{ render_includes(includes) }}
+{% endmacro %}

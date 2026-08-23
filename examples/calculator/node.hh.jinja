@@ -1,6 +1,9 @@
 {% from "c++/constructors" import
     render_default_ctor_parameters
 %}
+{% from "c++/includes" import
+    render_header_includes
+%}
 {% from "c++/types" import
     render_store_type,
     render_read_type,
@@ -24,16 +27,7 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-#include <string>
-
-#include "fwd.hh"
-#include "location.hh"
-
-{% for parent in node.parents | map(attribute="ty.name") | map("snakecase") %}
-#include "{{ parent }}.hh"
-{% endfor %}
+{{ render_header_includes(node) }}
 
 class {{ node.name }}{{ render_parents() }} {
 public:

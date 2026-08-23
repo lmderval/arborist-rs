@@ -7,6 +7,9 @@
     render_default_ctor_parameters,
     render_default_ctor_call_arguments
 %}
+{% from "c++/includes" import
+    render_implementation_includes
+%}
 {% from "c++/types" import
     render_read_type,
     render_write_type,
@@ -21,6 +24,8 @@
  */
 
 #include "{{ node.name | snakecase }}.hh"
+
+{{ render_implementation_includes(node) }}
 
 {{ node.name }}::{{ node.name }}({{ render_default_ctor_parameters(node) }})
 {%- set sep = joiner(",", ":") %}
