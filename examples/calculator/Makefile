@@ -4,6 +4,8 @@ CXXFLAGS = -std=c++23 -Werror -Wall -Wextra -pedantic -Wno-c99-designator
 ARBORIST = TEMPLATES_DIR=../../templates ../../target/debug/arborist-rs
 ARBOCONF = config.arb
 
+FORMAT = clang-format -i
+
 ARBOGEN = \
 	all.hh \
 	fwd.hh
@@ -38,10 +40,16 @@ all: arbogen $(BIN)
 arbogen: $(ARBOCONF) $(ARBOGEN)
 
 %: %.jinja $(ARBOCONF)
+	$(RM) $@
 	$(ARBORIST) --config $(ARBOCONF) render --template $< --in-place
+	$(FORMAT) $@
+	chmod -w $@
 
 $(ARBONODE)&: node.cc.jinja node.hh.jinja $(ARBOCONF)
+	$(RM) $(ARBONODE)
 	$(ARBORIST) --config $(ARBOCONF) render --in-place
+	$(FORMAT) $(ARBONODE)
+	chmod -w $(ARBONODE)
 
 $(BIN): $(OBJ)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
