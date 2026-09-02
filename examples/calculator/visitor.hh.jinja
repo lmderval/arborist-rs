@@ -1,0 +1,22 @@
+/**
+ * \file {{ filename }}
+ * \brief Definition of Visitor.
+ */
+
+#pragma once
+
+#include "fwd.hh"
+
+class ConstVisitor {
+public:
+{% for node in config.decs | selectattr("kind", "eq", "Node") %}
+    virtual void operator()(const {{ node.name }}& e);
+{% endfor %}
+};
+
+class InvasiveVisitor {
+public:
+{% for node in config.decs | selectattr("kind", "eq", "Node") %}
+    virtual void operator()({{ node.name }}& e);
+{% endfor %}
+};

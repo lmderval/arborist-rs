@@ -44,6 +44,13 @@
 {{ node.name }}::~{{ node.name }}() {}
 {% endif %}
 
+void {{ node.name }}::accept(ConstVisitor& v) const {
+    v(*this);
+}
+void {{ node.name }}::accept(InvasiveVisitor& v) {
+    v(*this);
+}
+
 {% for attr in attributes %}
     {% set mod = attr.modifier %}
     {% if mod.r %}

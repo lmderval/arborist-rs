@@ -8,7 +8,9 @@ FORMAT = clang-format -i
 
 ARBOGEN = \
 	all.hh \
-	fwd.hh
+	fwd.hh \
+	visitor.cc \
+	visitor.hh
 
 ARBONODE = \
 	exp.cc \
@@ -29,6 +31,8 @@ SRC = \
 	int_exp.cc \
 	unary_exp.cc \
 	binary_exp.cc \
+	visitor.cc \
+	pretty_printer.cc \
 	main.cc
 
 OBJ = $(SRC:.cc=.o)
@@ -38,6 +42,12 @@ BIN = calculator
 all: arbogen $(BIN)
 
 arbogen: $(ARBOCONF) $(ARBOGEN)
+
+%.cc: %.cc.jinja $(ARBOCONF)
+	$(RM) $@
+	$(ARBORIST) --config $(ARBOCONF) render --template $< --in-place
+	$(FORMAT) $@
+	chmod -w $@
 
 %: %.jinja $(ARBOCONF)
 	$(RM) $@

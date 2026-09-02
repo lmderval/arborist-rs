@@ -9,7 +9,7 @@
 
 {% set LOC_TY = "location" -%}
 
-{% set ARRAY_TY = "std::array<%s>" -%}
+{% set ARRAY_TY = "std::array<%s, 8>" -%}
 
 {% macro render_store_type(type) %}
     {% set ty = type.ty %}

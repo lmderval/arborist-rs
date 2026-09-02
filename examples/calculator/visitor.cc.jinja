@@ -1,0 +1,64 @@
+{% macro render_visit_iterator(ty, const, level=0) %}
+    {% set current = "(*it" ~ (level | default("", true)) ~ ")" %}
+    {% if ty.ty.kind == "Name" and ty.dec.kind == "Node" %}
+    {{ current }}->accept(*this);
+    {% elif ty.ty.kind == "Array" %}
+        {% set new = "it" ~ (level + 1) %}
+        {% set begin = "cbegin" if const else "begin" %}
+        {% set end = "cend" if const else "end" %}
+    for (auto {{ new }} = {{ current }}.{{ begin }}();
+         {{ new }} != {{ current }}.{{ end }}(); ++{{ new }}) {
+{{ render_visit_iterator(ty.ty.type, const, level + 1) -}}
+    }
+    {% endif %}
+{% endmacro -%}
+
+{% macro render_visit_attribute(attr, const) %}
+    {% set attr_get %}
+e.{{ attr.name }}_{{ "get" if const else "mut" }}()
+    {%- endset %}
+    {% if attr.ty.ty.kind == "Name" and attr.ty.dec.kind == "Node" %}
+    {{ attr_get }}.accept(*this);
+    {% elif attr.ty.ty.kind == "Array" %}
+        {% set begin = "cbegin" if const else "begin" %}
+        {% set end = "cend" if const else "end" %}
+    for (auto it = {{ attr_get }}.{{ begin }}();
+         it != {{ attr_get }}.{{ end }}(); ++it) {
+{{ render_visit_iterator(attr.ty.ty.type, const) -}}
+    }
+    {% endif %}
+{% endmacro -%}
+
+/**
+ * \file {{ filename }}
+ * \brief Implementation of Visitor.
+ */
+
+#include "visitor.hh"
+
+#include "all.hh"
+
+{% for node in config.decs | selectattr("kind", "eq", "Node") %}
+void ConstVisitor::operator()([[maybe_unused]] const {{ node.name }}& e) {
+    {% if not node.parents %}
+    e.accept(*this);
+    {% else %}
+        {% for attr in node.decs
+                       | selectattr("kind", "eq", "Attr")
+                       | selectattr("modifier.r") %}
+{{ render_visit_attribute(attr, true) -}}
+        {% endfor %}
+    {% endif %}
+}
+void InvasiveVisitor::operator()([[maybe_unused]] {{ node.name }}& e) {
+    {% if not node.parents %}
+    e.accept(*this);
+    {% else %}
+        {% for attr in node.decs
+                       | selectattr("kind", "eq", "Attr")
+                       | selectattr("modifier.m") %}
+{{ render_visit_attribute(attr, false) -}}
+        {% endfor %}
+    {% endif %}
+}
+{% endfor %}

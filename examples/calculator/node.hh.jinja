@@ -16,7 +16,7 @@
 {% macro render_parents() %}
     {% set sep = joiner(",", ":") %}
     {% for parent in node.parents | map(attribute="ty.name") +%}
-    {{ sep() }} {{ parent }}
+    {{ sep() }} public {{ parent }}
     {%- endfor %}
 {% endmacro -%}
 
@@ -27,7 +27,7 @@
 
 #pragma once
 
-{{ render_header_includes(node) }}
+{{ render_header_includes(node, local=["fwd", "visitor"]) }}
 
 class {{ node.name }}{{ render_parents() }} {
 public:
@@ -44,6 +44,15 @@ public:
     virtual ~{{ node.name }}() = 0;
 {% else %}
     ~{{ node.name }}() override = default;
+{% endif %}
+
+public:
+{% if not node.parents %}
+    virtual void accept(ConstVisitor& v) const;
+    virtual void accept(InvasiveVisitor& v);
+{% else %}
+    void accept(ConstVisitor& v) const override;
+    void accept(InvasiveVisitor& v) override;
 {% endif %}
 
 {% if attributes %}
