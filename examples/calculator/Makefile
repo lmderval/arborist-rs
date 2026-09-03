@@ -1,4 +1,5 @@
 CXX = clang++
+CPPFLAGS = -I../../lib/c++/include
 CXXFLAGS = -std=c++23 -Werror -Wall -Wextra -pedantic -Wno-c99-designator
 
 ARBORIST = TEMPLATES_DIR=../../templates ../../target/debug/arborist-rs

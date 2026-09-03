@@ -15,7 +15,7 @@
     {% set ty = type.ty %}
     {% if ty.kind == "Name" %}
         {% if type.dec.kind == "Node" %}
-std::unique_ptr<{{ ty.name }}>
+arborist::propagate_const_unique_ptr<{{ ty.name }}>
         {%- else %}
 {{ ty.name }}
         {%- endif %}

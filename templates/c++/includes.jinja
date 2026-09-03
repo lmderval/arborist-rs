@@ -3,6 +3,10 @@
 #include <{{ include }}>
     {% endfor %}
 
+    {% for include in includes.path | unique | sort %}
+#include <{{ include }}.hh>
+    {% endfor %}
+
     {% for include in includes.local | unique | sort %}
 #include "{{ include }}.hh"
     {% endfor %}
@@ -12,8 +16,9 @@
     {% if ty.ty.kind == "Name" %}
         {% set includes.local = includes.local + ["fwd"] %}
         {% if ty.dec.kind == "Node" %}
-            {# std::unique_ptr #}
-            {% set includes.standard = includes.standard + ["memory"] %}
+            {# arborist::propagate_const_unique_ptr #}
+            {% set includes.path =
+                includes.path + ["arborist/propagate_const_unique_ptr"] %}
         {% endif %}
     {% elif ty.ty.kind == "Int" %}
         {# int_leastn_t #}
@@ -44,9 +49,10 @@
     {% endfor %}
 {% endmacro -%}
 
-{% macro render_header_includes(node, standard=[], local=[]) %}
+{% macro render_header_includes(node, standard=[], path=[], local=[]) %}
     {% set includes = namespace(
         standard=standard,
+        path=path,
         local=local,
     ) %}
     {% do compute_header_includes(node, includes) %}
@@ -72,9 +78,10 @@
     {% endif %}
 {% endmacro -%}
 
-{% macro render_implementation_includes(node, standard=[], local=[]) %}
+{% macro render_implementation_includes(node, standard=[], path=[], local=[]) %}
     {% set includes = namespace(
         standard=standard,
+        path=path,
         local=local,
     ) %}
     {% do compute_implementation_includes(node, includes) %}
