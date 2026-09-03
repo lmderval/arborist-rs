@@ -11,7 +11,9 @@ ARBOGEN = \
 	all.hh \
 	fwd.hh \
 	visitor.cc \
-	visitor.hh
+	visitor.hh \
+	cloner.cc \
+	cloner.hh
 
 ARBONODE = \
 	exp.cc \
@@ -34,6 +36,7 @@ SRC = \
 	binary_exp.cc \
 	visitor.cc \
 	pretty_printer.cc \
+	cloner.cc \
 	main.cc
 
 OBJ = $(SRC:.cc=.o)

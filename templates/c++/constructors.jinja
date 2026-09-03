@@ -1,7 +1,5 @@
-{% from "c++/types" import
-    render_write_type,
-    render_write_attribute
--%}
+{% from "c++/attributes" import render_write_attribute %}
+{% from "c++/types" import render_write_type -%}
 
 {% macro render_default_ctor_parameters(node, comma=joiner(", ")) %}
     {% for parent in node.parents | map(attribute="dec") %}

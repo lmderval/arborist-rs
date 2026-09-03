@@ -1,0 +1,32 @@
+{% set nodes = config.decs | selectattr("kind", "eq", "Node") | list -%}
+
+/**
+ * \file {{ filename }}
+ * \brief Definition of Cloner.
+ */
+
+#pragma once
+
+#include <arborist/propagate_const_unique_ptr.hh>
+
+#include "visitor.hh"
+
+class Cloner : public ConstVisitor {
+public:
+{% for node in nodes | selectattr("parents") %}
+    void operator()(const {{ node.name }}& e) override;
+{% endfor %}
+
+{% for node in nodes | rejectattr("parents") %}
+    /// Clone a {{ node.name }}.
+    arborist::propagate_const_unique_ptr<{{ node.name }}>
+    clone(const {{ node.name }}& e);
+{% endfor %}
+
+private:
+{% for node in nodes | rejectattr("parents") %}
+    /// Cloned {{ node.name }}.
+    arborist::propagate_const_unique_ptr<{{ node.name }}>
+    {{ node.name | snakecase }}_;
+{% endfor %}
+};

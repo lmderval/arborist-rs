@@ -1,0 +1,79 @@
+{% from "c++/constructors" import render_default_ctor_call_arguments %}
+{% from "c++/types" import render_store_type %}
+{% from "utils/roots" import roots -%}
+
+{% macro render_recurse_collection(ty, current, collector, level=0) %}
+    {% if ty.ty.kind == "Name" and ty.dec.kind == "Node" %}
+    {{ collector }} = clone(*{{ current }});
+    {% elif ty.ty.kind == "Array" %}
+        {% set idx = "i" ~ (level + 1) %}
+    for ({{ render_store_type(ty) }}::size_type {{ idx  }}= 0;
+         {{ idx }} < {{ current }}.size(); ++{{ idx }}) {
+        {% set inner_current = current ~ "[" ~ idx ~ "]" %}
+        {% set inner_collector = collector ~ "[" ~ idx ~ "]" %}
+{{ render_recurse_collection(
+    ty.ty.type,
+    inner_current,
+    inner_collector,
+    level + 1,
+) }}
+    }
+    {% else %}
+    {{ collector }} = {{ current }};
+    {% endif %}
+{% endmacro -%}
+
+{% macro render_recurse_clone(node) %}
+    {% for parent in node.parents | map(attribute="dec") %}
+{{ render_recurse_clone(parent) -}}
+    {% endfor %}
+    {% for attr in node.decs | selectattr("kind", "eq", "Attr") %}
+        {# A node is clonable if and only if all fields required to construct a
+           node are readable. #}
+        {% if attr.ty.ty.kind == "Name" and attr.ty.dec.kind == "Node" %}
+    auto {{ attr.name }} = clone(e.{{ attr.name }}_get());
+        {% elif attr.ty.ty.kind == "Array" %}
+    {{ render_store_type(attr.ty) }} {{ attr.name }};
+    for ({{ render_store_type(attr.ty) }}::size_type i = 0;
+         i < e.{{ attr.name }}_get().size(); ++i) {
+            {% set current = "e." ~ attr.name ~ "_get()[i]" %}
+            {% set collector = attr.name ~ "[i]" %}
+{{ render_recurse_collection(attr.ty.ty.type, current, collector) }}
+    }
+        {% else %}
+    auto {{ attr.name }} = e.{{ attr.name }}_get();
+        {% endif %}
+    {% endfor %}
+{% endmacro -%}
+
+{% set nodes = config.decs | selectattr("kind", "eq", "Node") -%}
+
+/**
+ * \file {{ filename }}
+ * \brief Implementation of Cloner.
+ */
+
+#include "cloner.hh"
+
+#include <arborist/propagate_const_unique_ptr.hh>
+
+#include "all.hh"
+
+{% for node in nodes | selectattr("parents") %}
+    {% set root_name = roots[node.name] %}
+void Cloner::operator()(const {{ node.name }}& e) {
+{{ render_recurse_clone(node) -}}
+    {{ root_name | snakecase }}_ =
+        arborist::make_propagate_const_unique<{{ node.name }}>(
+{{- render_default_ctor_call_arguments(node) }});
+}
+{% endfor %}
+
+{% for node in nodes | rejectattr("parents") %}
+arborist::propagate_const_unique_ptr<{{ node.name }}>
+Cloner::clone(const {{ node.name }}& e) {
+    {{ node.name | snakecase }}_ = nullptr;
+    e.accept(*this);
+    return std::move({{ node.name | snakecase }}_);
+}
+{% endfor %}

@@ -1,0 +1,27 @@
+{% set ns = namespace(roots={}) -%}
+
+{% macro compute_root(node) %}
+    {# A node can only have one parent node. #}
+    {% set parent_node = node.parents
+                         | selectattr("ty.kind", "eq", "Name")
+                         | selectattr("dec.kind", "eq", "Node")
+                         | map(attribute="dec")
+                         | first %}
+    {% set root_name = node.name %}
+    {% if parent_node %}
+        {% if parent_node.name not in ns.roots %}
+            {% do compute_root(parent_node) %}
+        {% endif %}
+        {% set root_name = ns.roots[parent_node.name] %}
+    {% endif %}
+    {% set ns.roots = dict(ns.roots, **{
+        node.name: root_name,
+    }) %}
+{% endmacro -%}
+
+{% for node in config.decs | selectattr("kind", "eq", "Node")
+            if node.name not in ns.roots %}
+    {% do compute_root(node) %}
+{% endfor -%}
+
+{% set roots = ns.roots %}
