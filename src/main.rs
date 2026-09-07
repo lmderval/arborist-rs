@@ -7,6 +7,7 @@ use crate::config::parser::parse;
 use crate::config::pretty_printer::PrettyPrinter;
 use crate::render::renderer;
 use crate::typing::resolver::Resolver;
+use crate::typing::type_checker::TypeChecker;
 
 pub mod config;
 pub mod render;
@@ -43,6 +44,7 @@ fn main() {
     config.set_path(&cli.config);
 
     Resolver::resolve_config(&mut config);
+    TypeChecker::check_types(&config);
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print_config(&config),

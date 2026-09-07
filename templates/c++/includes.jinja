@@ -37,6 +37,7 @@
 {% endmacro -%}
 
 {% macro compute_header_includes(node, includes) %}
+    {# Parents are all nodes. #}
     {% set includes.local = includes.local + (
         node.parents
         | map(attribute="ty.name")

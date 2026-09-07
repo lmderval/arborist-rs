@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
@@ -9,6 +10,18 @@ pub enum Ty {
     Str,
     Loc,
     Array(Rc<RefCell<Type>>),
+}
+
+impl Display for Ty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Ty::Name(name) => write!(f, "{}", name),
+            Ty::Int(size) => write!(f, "i{}", size),
+            Ty::Str => write!(f, "str"),
+            Ty::Loc => write!(f, "loc"),
+            Ty::Array(ty) => write!(f, "arr<{}>", ty.borrow().ty),
+        }
+    }
 }
 
 pub struct Type {
@@ -49,6 +62,16 @@ pub enum Dec {
         modifier: AttrMod,
         ty: Rc<RefCell<Type>>,
     },
+}
+
+impl Dec {
+    pub fn name(&self) -> &str {
+        match self {
+            Dec::Node { name, .. } => name,
+            Dec::Enum { name, .. } => name,
+            Dec::Attr { name, .. } => name,
+        }
+    }
 }
 
 pub enum Value {
