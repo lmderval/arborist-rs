@@ -4,6 +4,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
+#[derive(Clone)]
 pub enum Ty {
     Name(String),
     Int(u8),
@@ -24,6 +25,19 @@ impl Display for Ty {
     }
 }
 
+impl PartialEq for Ty {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Names must be bound to the same declaration to be considered equal.
+            (Self::Name(_), Self::Name(_)) => false,
+            (Self::Int(l0), Self::Int(r0)) => l0 == r0,
+            (Self::Array(l0), Self::Array(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Type {
     pub dec: Option<Weak<RefCell<Dec>>>,
     pub ty: Ty,
@@ -36,6 +50,16 @@ impl Type {
 
     pub fn define(&mut self, dec: Weak<RefCell<Dec>>) {
         self.dec = Some(dec);
+    }
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self.dec, &other.dec) {
+            (Some(d1), Some(d2)) => Weak::ptr_eq(d1, d2),
+            (None, None) => self.ty == other.ty,
+            _ => false,
+        }
     }
 }
 

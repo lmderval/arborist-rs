@@ -41,4 +41,11 @@ impl MutVoidVisitor for Resolver {
             Ty::Array(ty) => self.visit_type(ty),
         }
     }
+
+    fn visit_exp(&mut self, exp: &mut Exp) {
+        self.visit_exp_default(exp);
+        if let Some(ty) = &mut exp.ty {
+            self.visit_type(ty);
+        }
+    }
 }

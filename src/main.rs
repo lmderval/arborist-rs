@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 use crate::config::parser::parse;
 use crate::config::pretty_printer::PrettyPrinter;
 use crate::render::renderer;
+use crate::typing::exp_resolver::ExpResolver;
 use crate::typing::resolver::Resolver;
 use crate::typing::type_checker::TypeChecker;
 
@@ -43,6 +44,7 @@ fn main() {
     let mut config = parse(&unparsed_config).expect("unsuccessful parse");
     config.set_path(&cli.config);
 
+    ExpResolver::resolve_exps(&mut config);
     Resolver::resolve_config(&mut config);
     TypeChecker::check_types(&config);
 
