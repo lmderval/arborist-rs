@@ -81,7 +81,7 @@ pub enum Value {
 }
 
 pub struct Exp {
-    pub ty: Option<Weak<RefCell<Type>>>,
+    pub ty: Option<Rc<RefCell<Type>>>,
     pub value: Value,
 }
 
@@ -93,7 +93,7 @@ impl Exp {
         }
     }
 
-    pub fn type_exp(&mut self, ty: Weak<RefCell<Type>>) {
+    pub fn type_exp(&mut self, ty: Rc<RefCell<Type>>) {
         self.ty = Some(ty);
     }
 }

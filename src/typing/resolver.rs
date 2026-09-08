@@ -1,12 +1,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use crate::config::ast::*;
 use crate::config::visitor::MutVoidVisitor;
 
 pub struct Resolver {
-    decs: HashMap<String, Weak<RefCell<Dec>>>,
+    decs: HashMap<String, Rc<RefCell<Dec>>>,
 }
 
 impl Resolver {
@@ -15,9 +15,7 @@ impl Resolver {
             .decs
             .iter()
             .map(|dec| match &*dec.borrow() {
-                Dec::Node { name, .. } | Dec::Enum { name, .. } => {
-                    (name.clone(), Rc::downgrade(dec))
-                }
+                Dec::Node { name, .. } | Dec::Enum { name, .. } => (name.clone(), Rc::clone(dec)),
                 _ => panic!("unexpected declaration: should be a Node or an Enum"),
             })
             .collect();
@@ -38,7 +36,7 @@ impl MutVoidVisitor for Resolver {
                 let Some(dec) = self.decs.get(name) else {
                     panic!("unkwnown type: {}", name);
                 };
-                ty.define(dec.clone());
+                ty.define(Rc::downgrade(dec));
             }
             Ty::Int(_) | Ty::Str | Ty::Loc => {}
             Ty::Array(ty) => self.visit_type(ty),
