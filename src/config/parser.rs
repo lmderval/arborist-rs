@@ -79,7 +79,7 @@ fn parse_node_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
     let parents_pair = pairs.next().unwrap();
     let parents = parents_pair
         .into_inner()
-        .map(|p| Rc::new(RefCell::new(Type::new(parse_ty(p)))))
+        .map(|p| Box::new(Type::new(parse_ty(p))))
         .collect();
     let decs_pair = pairs.next().unwrap();
     let decs = decs_pair
@@ -87,9 +87,9 @@ fn parse_node_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
         .map(|p| Rc::new(RefCell::new(parse_dec(p))))
         .collect();
     Dec::Node {
-        name: name,
-        parents: parents,
-        decs: decs,
+        name,
+        parents,
+        decs,
     }
 }
 
@@ -102,10 +102,7 @@ fn parse_enum_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
         .into_inner()
         .map(|p| String::from(p.as_str()))
         .collect();
-    Dec::Enum {
-        name: name,
-        values: values,
-    }
+    Dec::Enum { name, values }
 }
 
 fn parse_attr_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
@@ -115,12 +112,8 @@ fn parse_attr_dec(pair: pest::iterators::Pair<Rule>) -> Dec {
     let name_pair = pairs.next().unwrap();
     let name = String::from(name_pair.as_str());
     let ty_pair = pairs.next().unwrap();
-    let ty = Rc::new(RefCell::new(Type::new(parse_ty(ty_pair))));
-    Dec::Attr {
-        name: name,
-        modifier: modifier,
-        ty: ty,
-    }
+    let ty = Box::new(Type::new(parse_ty(ty_pair)));
+    Dec::Attr { name, modifier, ty }
 }
 
 fn parse_modifier(pair: pest::iterators::Pair<Rule>) -> AttrMod {
@@ -184,7 +177,7 @@ fn parse_collection_ty(pair: pest::iterators::Pair<Rule>) -> Ty {
     let mut pairs = pair.into_inner();
     let id = pairs.next().unwrap().as_str();
     let ty_pair = pairs.next().unwrap();
-    let ty = Rc::new(RefCell::new(Type::new(parse_ty(ty_pair))));
+    let ty = Box::new(Type::new(parse_ty(ty_pair)));
     match id {
         "arr" => Ty::Array(ty),
         unknown => panic!("unknown collection type: {:?}", unknown),

@@ -9,7 +9,7 @@ pub enum Ty {
     Int(u8),
     Str,
     Loc,
-    Array(Rc<RefCell<Type>>),
+    Array(Box<Type>),
 }
 
 impl Display for Ty {
@@ -19,7 +19,7 @@ impl Display for Ty {
             Ty::Int(size) => write!(f, "i{}", size),
             Ty::Str => write!(f, "str"),
             Ty::Loc => write!(f, "loc"),
-            Ty::Array(ty) => write!(f, "arr<{}>", ty.borrow().ty),
+            Ty::Array(ty) => write!(f, "arr<{}>", ty.ty),
         }
     }
 }
@@ -50,7 +50,7 @@ pub enum AttrMod {
 pub enum Dec {
     Node {
         name: String,
-        parents: Vec<Rc<RefCell<Type>>>,
+        parents: Vec<Box<Type>>,
         decs: Vec<Rc<RefCell<Dec>>>,
     },
     Enum {
@@ -60,7 +60,7 @@ pub enum Dec {
     Attr {
         name: String,
         modifier: AttrMod,
-        ty: Rc<RefCell<Type>>,
+        ty: Box<Type>,
     },
 }
 
@@ -81,7 +81,7 @@ pub enum Value {
 }
 
 pub struct Exp {
-    pub ty: Option<Rc<RefCell<Type>>>,
+    pub ty: Option<Box<Type>>,
     pub value: Value,
 }
 
@@ -93,7 +93,7 @@ impl Exp {
         }
     }
 
-    pub fn type_exp(&mut self, ty: Rc<RefCell<Type>>) {
+    pub fn type_exp(&mut self, ty: Box<Type>) {
         self.ty = Some(ty);
     }
 }

@@ -126,7 +126,7 @@ impl TypeChecker {
         &mut self,
         dec: &Rc<RefCell<Dec>>,
         name: &str,
-        parents: &[Rc<RefCell<Type>>],
+        parents: &[Box<Type>],
         children: &mut LinkedHashMap<*const RefCell<Dec>, Rc<RefCell<Dec>>>,
     ) -> Result<(), String> {
         if self.checked_node_parents.contains(&Rc::as_ptr(dec)) {
@@ -140,7 +140,7 @@ impl TypeChecker {
             for parent in parents {
                 self.check_node_parent(
                     name,
-                    &*parent.borrow(),
+                    parent,
                     &mut recorded_parents,
                     &mut parent_node,
                     children,

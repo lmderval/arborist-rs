@@ -89,7 +89,7 @@ macro_rules! define_void_visitor {
             fn visit_node_dec(
                 &mut self,
                 name: &$($mut)? String,
-                parents: &$($mut)? Vec<Rc<RefCell<Type>>>,
+                parents: &$($mut)? Vec<Box<Type>>,
                 decs: &$($mut)? Vec<Rc<RefCell<Dec>>>,
             ) {
                 self.visit_node_dec_default(name, parents, decs);
@@ -98,7 +98,7 @@ macro_rules! define_void_visitor {
             fn visit_node_dec_default(
                 &mut self,
                 _name: &$($mut)? String,
-                parents: &$($mut)? Vec<Rc<RefCell<Type>>>,
+                parents: &$($mut)? Vec<Box<Type>>,
                 decs: &$($mut)? Vec<Rc<RefCell<Dec>>>,
             ) {
                 parents.$iter().for_each(|p| self.visit_type(p));
@@ -123,7 +123,7 @@ macro_rules! define_void_visitor {
                 &mut self,
                 name: &$($mut)? String,
                 modifier: &$($mut)? AttrMod,
-                ty: &$($mut)? Rc<RefCell<Type>>,
+                ty: &$($mut)? Box<Type>,
             ) {
                 self.visit_attr_dec_default(name, modifier, ty);
             }
@@ -132,17 +132,17 @@ macro_rules! define_void_visitor {
                 &mut self,
                 _name: &$($mut)? String,
                 _modifier: &$($mut)? AttrMod,
-                ty: &$($mut)? Rc<RefCell<Type>>,
+                ty: &$($mut)? Box<Type>,
             ) {
                 self.visit_type(ty);
             }
 
-            fn visit_type(&mut self, ty: &$($mut)? Rc<RefCell<Type>>) {
+            fn visit_type(&mut self, ty: &$($mut)? Box<Type>) {
                 self.visit_type_default(ty);
             }
 
-            fn visit_type_default(&mut self, ty: &$($mut)? Rc<RefCell<Type>>) {
-                match &$($mut)? ty.$borrow().ty {
+            fn visit_type_default(&mut self, ty: &$($mut)? Box<Type>) {
+                match &$($mut)? ty.ty {
                     Ty::Name(name) => self.visit_name_ty(name),
                     Ty::Int(size) => self.visit_int_ty(size),
                     Ty::Str => self.visit_str_ty(),
@@ -175,11 +175,11 @@ macro_rules! define_void_visitor {
 
             fn visit_loc_ty_default(&mut self) {}
 
-            fn visit_array_ty(&mut self, ty: &$($mut)? Rc<RefCell<Type>>) {
+            fn visit_array_ty(&mut self, ty: &$($mut)? Box<Type>) {
                 self.visit_array_ty_default(ty);
             }
 
-            fn visit_array_ty_default(&mut self, ty: &$($mut)? Rc<RefCell<Type>>) {
+            fn visit_array_ty_default(&mut self, ty: &$($mut)? Box<Type>) {
                 self.visit_type(ty);
             }
         }

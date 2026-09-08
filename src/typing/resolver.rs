@@ -29,8 +29,7 @@ impl Resolver {
 }
 
 impl MutVoidVisitor for Resolver {
-    fn visit_type(&mut self, ty: &mut Rc<RefCell<Type>>) {
-        let ty = &mut *ty.borrow_mut();
+    fn visit_type(&mut self, ty: &mut Box<Type>) {
         match &mut ty.ty {
             Ty::Name(name) => {
                 let Some(dec) = self.decs.get(name) else {

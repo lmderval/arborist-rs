@@ -69,7 +69,7 @@ impl VoidVisitor for PrettyPrinter {
     fn visit_node_dec(
         &mut self,
         name: &String,
-        parents: &Vec<Rc<RefCell<Type>>>,
+        parents: &Vec<Box<Type>>,
         decs: &Vec<Rc<RefCell<Dec>>>,
     ) {
         self.output
@@ -116,7 +116,7 @@ impl VoidVisitor for PrettyPrinter {
         self.output.push_str("}\n\n");
     }
 
-    fn visit_attr_dec(&mut self, name: &String, modifier: &AttrMod, ty: &Rc<RefCell<Type>>) {
+    fn visit_attr_dec(&mut self, name: &String, modifier: &AttrMod, ty: &Box<Type>) {
         let modifier_str = match modifier {
             AttrMod::None => "",
             AttrMod::Readable => "readable ",
@@ -136,31 +136,12 @@ impl VoidVisitor for PrettyPrinter {
                 &format!("access<{}> ", access)
             }
         };
-        self.output
-            .push_str(&format!("{}{}{}: ", self.indent_str(), modifier_str, name));
-        self.visit_type(ty);
-        self.output.push_str(";\n");
-    }
-
-    fn visit_name_ty(&mut self, name: &String) {
-        self.output.push_str(name);
-    }
-
-    fn visit_int_ty(&mut self, size: &u8) {
-        self.output.push_str(&format!("i{}", size));
-    }
-
-    fn visit_str_ty(&mut self) {
-        self.output.push_str("str");
-    }
-
-    fn visit_loc_ty(&mut self) {
-        self.output.push_str("loc");
-    }
-
-    fn visit_array_ty(&mut self, ty: &Rc<RefCell<Type>>) {
-        self.output.push_str("arr<");
-        self.visit_type(ty);
-        self.output.push('>');
+        self.output.push_str(&format!(
+            "{}{}{}: {};\n",
+            self.indent_str(),
+            modifier_str,
+            name,
+            ty.ty,
+        ));
     }
 }
