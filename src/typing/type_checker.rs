@@ -18,9 +18,9 @@ impl TypeChecker {
         }
     }
 
-    pub fn check_types(config: &Config) {
-        let mut type_checker = Self::new();
-        type_checker.visit_config(config);
+    pub fn do_pass(config: Config) -> Config {
+        Self::new().visit_config(&config);
+        config
     }
 
     fn check_no_circular_inheritance(

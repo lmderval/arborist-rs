@@ -5,9 +5,9 @@ use clap::{Parser, Subcommand};
 
 use crate::config::parser::parse;
 use crate::config::pretty_printer::PrettyPrinter;
-use crate::render::renderer;
+use crate::render::renderer::Renderer;
 use crate::typing::exp_resolver::ExpResolver;
-use crate::typing::resolver::Resolver;
+use crate::typing::name_resolver::NameResolver;
 use crate::typing::type_checker::TypeChecker;
 
 pub mod config;
@@ -37,6 +37,23 @@ enum Commands {
     },
 }
 
+macro_rules! run_passes {
+    ($config:expr) => {
+        $config
+    };
+
+    (
+        $config:expr
+        => $first_pass:ident$(($($first_arg:expr),+$(,)?))?
+        $(=> $pass:ident$(($($arg:expr),+$(,)?))?)*
+    ) => {
+        run_passes!(
+            $first_pass::do_pass($config $($(, $first_arg)+)?)
+            $(=> $pass$(($($arg),+))?)*
+        )
+    };
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -44,12 +61,17 @@ fn main() {
     let mut config = parse(&unparsed_config).expect("unsuccessful parse");
     config.set_path(&cli.config);
 
-    ExpResolver::resolve_exps(&mut config);
-    Resolver::resolve_config(&mut config);
-    TypeChecker::check_types(&config);
+    let typed_config = run_passes!(
+        config
+        => ExpResolver
+        => NameResolver
+        => TypeChecker
+    );
 
     match cli.command {
-        Commands::PrettyPrint => PrettyPrinter::print_config(&config),
-        Commands::Render { template, in_place } => renderer::render(&config, &template, in_place),
+        Commands::PrettyPrint => PrettyPrinter::print(&typed_config),
+        Commands::Render { template, in_place } => {
+            Renderer::render(&typed_config, &template, in_place)
+        }
     }
 }

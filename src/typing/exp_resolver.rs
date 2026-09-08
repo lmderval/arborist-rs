@@ -10,8 +10,9 @@ impl ExpResolver {
         Self { ty: None }
     }
 
-    pub fn resolve_exps(config: &mut Config) {
-        ExpResolver::new().visit_config(config);
+    pub fn do_pass(mut config: Config) -> Config {
+        Self::new().visit_config(&mut config);
+        config
     }
 
     fn type_value(&mut self, value: &mut Value) -> Result<Box<Type>, String> {

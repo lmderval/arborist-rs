@@ -17,7 +17,12 @@ impl PrettyPrinter {
         }
     }
 
-    pub fn print_config(config: &Config) {
+    pub fn do_pass(config: Config) -> Config {
+        Self::print(&config);
+        config
+    }
+
+    pub fn print(config: &Config) {
         let mut printer = PrettyPrinter::new();
         printer.visit_config(config);
         println!("{}", printer.output.trim_end());

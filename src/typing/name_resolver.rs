@@ -5,11 +5,11 @@ use std::rc::Rc;
 use crate::config::ast::*;
 use crate::config::visitor::MutVoidVisitor;
 
-pub struct Resolver {
+pub struct NameResolver {
     decs: HashMap<String, Rc<RefCell<Dec>>>,
 }
 
-impl Resolver {
+impl NameResolver {
     fn new(config: &Config) -> Self {
         let decs = config
             .decs
@@ -22,13 +22,13 @@ impl Resolver {
         Self { decs }
     }
 
-    pub fn resolve_config(config: &mut Config) {
-        let mut resolver = Resolver::new(config);
-        resolver.visit_config(config);
+    pub fn do_pass(mut config: Config) -> Config {
+        Self::new(&config).visit_config(&mut config);
+        config
     }
 }
 
-impl MutVoidVisitor for Resolver {
+impl MutVoidVisitor for NameResolver {
     fn visit_type(&mut self, ty: &mut Box<Type>) {
         match &mut ty.ty {
             Ty::Name(name) => {

@@ -186,16 +186,25 @@ fn render_templates(env: &mut Environment, config: &Config, in_place: bool) {
     }
 }
 
-pub fn render(config: &Config, template: &Option<PathBuf>, in_place: bool) {
-    let mut env = Environment::new();
-    prepare_env(&mut env, config);
-    match template {
-        Some(t) => {
-            let tmpl = load_template(&mut env, t);
-            let filename = remove_template_extension(tmpl.name());
-            let ctx = build_context(&filename, config, None);
-            render_template(filename, &tmpl, &ctx, in_place);
+pub struct Renderer;
+
+impl Renderer {
+    pub fn do_pass<'a>(config: Config<'a>, template: PathBuf) -> Config<'a> {
+        Self::render(&config, &Some(template), false);
+        config
+    }
+
+    pub fn render(config: &Config, template: &Option<PathBuf>, in_place: bool) {
+        let mut env = Environment::new();
+        prepare_env(&mut env, config);
+        match template {
+            Some(t) => {
+                let tmpl = load_template(&mut env, t);
+                let filename = remove_template_extension(tmpl.name());
+                let ctx = build_context(&filename, config, None);
+                render_template(filename, &tmpl, &ctx, in_place);
+            }
+            None => render_templates(&mut env, config, in_place),
         }
-        None => render_templates(&mut env, config, in_place),
     }
 }
