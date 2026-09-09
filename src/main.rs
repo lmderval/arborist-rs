@@ -4,7 +4,7 @@ use std::process::exit;
 
 use clap::{Parser, Subcommand};
 
-use crate::config::parser::parse;
+use crate::config::parser::ConfigParser;
 use crate::config::pretty_printer::PrettyPrinter;
 use crate::render::renderer::Renderer;
 use crate::typing::exp_resolver::ExpResolver;
@@ -57,16 +57,22 @@ macro_rules! run_passes {
     };
 }
 
+struct FileReader;
+
+impl FileReader {
+    fn do_pass(file: &PathBuf, _errors: &mut MultiError) -> String {
+        fs::read_to_string(file).expect("cannot read file")
+    }
+}
+
 fn main() {
     let mut errors = MultiError::new();
     let cli = Cli::parse();
 
-    let unparsed_config = fs::read_to_string(&cli.config).expect("cannot read file");
-    let mut config = parse(&unparsed_config).expect("unsuccessful parse");
-    config.set_path(&cli.config);
-
-    let typed_config = run_passes!(
-        (config, errors)
+    let config = run_passes!(
+        (&cli.config, errors)
+        => FileReader
+        => ConfigParser(&cli.config)
         => ExpResolver
         => NameResolver
         => TypeChecker
@@ -81,9 +87,7 @@ fn main() {
     }
 
     match cli.command {
-        Commands::PrettyPrint => PrettyPrinter::print(&typed_config),
-        Commands::Render { template, in_place } => {
-            Renderer::render(&typed_config, &template, in_place)
-        }
+        Commands::PrettyPrint => PrettyPrinter::print(&config),
+        Commands::Render { template, in_place } => Renderer::render(&config, &template, in_place),
     }
 }
