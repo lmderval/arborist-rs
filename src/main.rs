@@ -10,7 +10,7 @@ use crate::render::renderer::Renderer;
 use crate::typing::exp_resolver::ExpResolver;
 use crate::typing::name_resolver::NameResolver;
 use crate::typing::type_checker::TypeChecker;
-use crate::utils::error::MultiError;
+use crate::utils::error::{ErrorKind, MultiError};
 
 pub mod config;
 pub mod render;
@@ -60,8 +60,17 @@ macro_rules! run_passes {
 struct FileReader;
 
 impl FileReader {
-    fn do_pass(file: &PathBuf, _errors: &mut MultiError) -> String {
-        fs::read_to_string(file).expect("cannot read file")
+    fn do_pass(file: &PathBuf, errors: &mut MultiError) -> String {
+        match fs::read_to_string(file) {
+            Ok(source) => source,
+            Err(err) => {
+                errors.push(
+                    ErrorKind::Cli,
+                    &format!("unable to read `{}`: {}", file.to_string_lossy(), err),
+                );
+                String::new()
+            }
+        }
     }
 }
 

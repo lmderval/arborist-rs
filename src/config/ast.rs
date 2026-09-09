@@ -13,6 +13,8 @@ pub enum Ty {
     Array(Box<Type>),
 }
 
+pub const ERROR_TY: Ty = Ty::Int(0);
+
 impl Display for Ty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -104,6 +106,8 @@ pub enum Value {
     Array(Vec<Exp>),
 }
 
+pub const ERROR_VALUE: Value = Value::Int(0);
+
 pub struct Exp {
     pub ty: Option<Box<Type>>,
     pub value: Value,
@@ -148,6 +152,14 @@ impl<'a> Config<'a> {
             path: None,
             decs: decs,
             vars: vars,
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            path: None,
+            decs: Vec::new(),
+            vars: HashMap::new(),
         }
     }
 

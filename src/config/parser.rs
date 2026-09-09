@@ -3,101 +3,164 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use pest::error::Error;
+use pest::error::{Error, ErrorVariant};
 use pest::iterators::Pair;
-use pest::Parser;
+use pest::{Parser, Span};
 use pest_derive;
 
 use crate::config::ast::*;
-use crate::utils::error::MultiError;
+use crate::utils::error::{ErrorKind, MultiError};
 
 #[derive(pest_derive::Parser)]
 #[grammar = "arbolang.pest"]
-pub struct ConfigParser;
+pub struct ConfigParser<'err> {
+    errors: &'err mut MultiError,
+}
 
-impl ConfigParser {
-    pub fn do_pass<'a>(source: String, _errors: &mut MultiError, file: &'a PathBuf) -> Config<'a> {
-        let mut config = Self::parse_config(&source).expect("unsuccessful parse");
+impl<'err> ConfigParser<'err> {
+    fn new(errors: &'err mut MultiError) -> Self {
+        Self { errors }
+    }
+
+    pub fn do_pass<'a>(source: String, errors: &mut MultiError, file: &'a PathBuf) -> Config<'a> {
+        let mut config = match ConfigParser::new(errors).parse_config(&source) {
+            Ok(config) => config,
+            Err(err) => {
+                errors.push(
+                    ErrorKind::Syntax,
+                    &format!("cannot parse configuration:\n{}", err),
+                );
+                Config::empty()
+            }
+        };
         config.set_path(file);
         config
     }
 
-    fn parse_config<'a>(source: &str) -> Result<Config<'a>, Error<Rule>> {
+    fn error_at(&mut self, kind: ErrorKind, message: &str, reason: &str, span: Span) {
+        let error = Error::<Rule>::new_from_span(
+            ErrorVariant::CustomError {
+                message: reason.into(),
+            },
+            span,
+        );
+        self.errors.push(kind, &format!("{}:\n{}", message, error));
+    }
+
+    fn parse_config<'a>(&mut self, source: &str) -> Result<Config<'a>, Error<Rule>> {
         let mut decs = Vec::new();
         let mut vars = HashMap::new();
-        let pairs = ConfigParser::parse(Rule::Config, source)?;
+        let pairs = Self::parse(Rule::Config, source)?;
         for pair in pairs {
             match pair.as_rule() {
-                Rule::Dec => decs.push(Rc::new(RefCell::new(Self::parse_dec(pair)))),
+                Rule::Dec => {
+                    if let Some(dec) = self.parse_dec(pair) {
+                        decs.push(Rc::new(RefCell::new(dec)))
+                    }
+                }
                 Rule::Var => {
-                    let var = Self::parse_var(pair);
+                    let var = self.parse_var(pair);
                     vars.insert(var.name.clone(), var);
                 }
                 Rule::EOI => {}
-                unknown => panic!("unknown config: {:?}", unknown),
+                _ => {
+                    self.error_at(
+                        ErrorKind::Internal,
+                        "cannot parse configuration",
+                        &format!("invalid top-level element `{}`", pair),
+                        pair.as_span(),
+                    );
+                }
             }
         }
         Ok(Config::new(decs, vars))
     }
 
-    fn parse_var(pair: Pair<Rule>) -> Var {
+    fn parse_var(&mut self, pair: Pair<Rule>) -> Var {
         let mut pairs = pair.into_inner();
         let name_pair = pairs.next().unwrap();
         let name = String::from(name_pair.as_str());
         let exp_pair = pairs.next().unwrap();
-        let exp = Self::parse_exp(exp_pair);
+        let exp = self.parse_exp(exp_pair);
         Var::new(name, exp)
     }
 
-    fn parse_exp(pair: Pair<Rule>) -> Exp {
+    fn parse_exp(&mut self, pair: Pair<Rule>) -> Exp {
         match pair.as_rule() {
-            Rule::Exp => Self::parse_exp(pair.into_inner().next().unwrap()),
-            Rule::IntExp => Self::parse_int_exp(pair),
-            Rule::StringExp => Self::parse_string_exp(pair),
-            Rule::ArrayExp => Self::parse_array_exp(pair),
-            unknown => panic!("unknown exp: {:?}", unknown),
+            Rule::Exp => self.parse_exp(pair.into_inner().next().unwrap()),
+            Rule::IntExp => self.parse_int_exp(pair),
+            Rule::StringExp => self.parse_string_exp(pair),
+            Rule::ArrayExp => self.parse_array_exp(pair),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse expression",
+                    &format!("unknown expression: `{}`", pair),
+                    pair.as_span(),
+                );
+                Exp::new(ERROR_VALUE)
+            }
         }
     }
 
-    fn parse_int_exp(pair: Pair<Rule>) -> Exp {
-        let value = pair.as_str().parse().expect("unable to parse integer");
-        Exp::new(Value::Int(value))
+    fn parse_int_exp(&mut self, pair: Pair<Rule>) -> Exp {
+        match pair.as_str().parse() {
+            Ok(value) => Exp::new(Value::Int(value)),
+            Err(err) => {
+                self.error_at(
+                    ErrorKind::Syntax,
+                    "cannot parse integer",
+                    &err.to_string(),
+                    pair.as_span(),
+                );
+                Exp::new(ERROR_VALUE)
+            }
+        }
     }
 
-    fn parse_string_exp(pair: Pair<Rule>) -> Exp {
+    fn parse_string_exp(&mut self, pair: Pair<Rule>) -> Exp {
         let content_pair = pair.into_inner().next().unwrap();
         let content = String::from(content_pair.as_str());
         Exp::new(Value::Str(content))
     }
 
-    fn parse_array_exp(pair: Pair<Rule>) -> Exp {
-        let vec = pair.into_inner().map(|p| Self::parse_exp(p)).collect();
+    fn parse_array_exp(&mut self, pair: Pair<Rule>) -> Exp {
+        let vec = pair.into_inner().map(|p| self.parse_exp(p)).collect();
         Exp::new(Value::Array(vec))
     }
 
-    fn parse_dec(pair: Pair<Rule>) -> Dec {
+    fn parse_dec(&mut self, pair: Pair<Rule>) -> Option<Dec> {
         match pair.as_rule() {
-            Rule::Dec => Self::parse_dec(pair.into_inner().next().unwrap()),
-            Rule::NodeDec => Self::parse_node_dec(pair),
-            Rule::EnumDec => Self::parse_enum_dec(pair),
-            Rule::AttrDec => Self::parse_attr_dec(pair),
-            unknown => panic!("unknown dec: {:?}", unknown),
+            Rule::Dec => self.parse_dec(pair.into_inner().next().unwrap()),
+            Rule::NodeDec => Some(self.parse_node_dec(pair)),
+            Rule::EnumDec => Some(self.parse_enum_dec(pair)),
+            Rule::AttrDec => Some(self.parse_attr_dec(pair)),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse declaration",
+                    &format!("invalid declaration `{}`", pair),
+                    pair.as_span(),
+                );
+                None
+            }
         }
     }
 
-    fn parse_node_dec(pair: Pair<Rule>) -> Dec {
+    fn parse_node_dec(&mut self, pair: Pair<Rule>) -> Dec {
         let mut pairs = pair.into_inner();
         let name_pair = pairs.next().unwrap();
         let name = String::from(name_pair.as_str());
         let parents_pair = pairs.next().unwrap();
         let parents = parents_pair
             .into_inner()
-            .map(|p| Box::new(Type::new(Self::parse_ty(p))))
+            .map(|p| Box::new(Type::new(self.parse_ty(p))))
             .collect();
         let decs_pair = pairs.next().unwrap();
         let decs = decs_pair
             .into_inner()
-            .map(|p| Rc::new(RefCell::new(Self::parse_dec(p))))
+            .filter_map(|p| self.parse_dec(p))
+            .map(|d| Rc::new(RefCell::new(d)))
             .collect();
         Dec::Node {
             name,
@@ -106,7 +169,7 @@ impl ConfigParser {
         }
     }
 
-    fn parse_enum_dec(pair: Pair<Rule>) -> Dec {
+    fn parse_enum_dec(&mut self, pair: Pair<Rule>) -> Dec {
         let mut pairs = pair.into_inner();
         let name_pair = pairs.next().unwrap();
         let name = String::from(name_pair.as_str());
@@ -118,27 +181,35 @@ impl ConfigParser {
         Dec::Enum { name, values }
     }
 
-    fn parse_attr_dec(pair: Pair<Rule>) -> Dec {
+    fn parse_attr_dec(&mut self, pair: Pair<Rule>) -> Dec {
         let mut pairs = pair.into_inner();
         let modifier_pair = pairs.next().unwrap();
-        let modifier = Self::parse_modifier(modifier_pair);
+        let modifier = self.parse_modifier(modifier_pair);
         let name_pair = pairs.next().unwrap();
         let name = String::from(name_pair.as_str());
         let ty_pair = pairs.next().unwrap();
-        let ty = Box::new(Type::new(Self::parse_ty(ty_pair)));
+        let ty = Box::new(Type::new(self.parse_ty(ty_pair)));
         Dec::Attr { name, modifier, ty }
     }
 
-    fn parse_modifier(pair: Pair<Rule>) -> AttrMod {
+    fn parse_modifier(&mut self, pair: Pair<Rule>) -> AttrMod {
         match pair.as_rule() {
-            Rule::AttrMod => Self::parse_modifier(pair.into_inner().next().unwrap()),
-            Rule::UserAttrMod => Self::parse_user_modifier(pair),
-            Rule::PrimitiveAttrMod => Self::parse_primitive_modifier(pair),
-            unknown => panic!("unknown modifier: {:?}", unknown),
+            Rule::AttrMod => self.parse_modifier(pair.into_inner().next().unwrap()),
+            Rule::UserAttrMod => self.parse_user_modifier(pair),
+            Rule::PrimitiveAttrMod => self.parse_primitive_modifier(pair),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse modifier",
+                    &format!("invalid modifier `{}`", pair),
+                    pair.as_span(),
+                );
+                AttrMod::None
+            }
         }
     }
 
-    fn parse_user_modifier(pair: Pair<Rule>) -> AttrMod {
+    fn parse_user_modifier(&mut self, pair: Pair<Rule>) -> AttrMod {
         let access_pair = pair.into_inner().next().unwrap();
         access_pair.as_str().chars().fold(
             AttrMod::Access(false, false, false),
@@ -147,34 +218,58 @@ impl ConfigParser {
                     'r' => AttrMod::Access(true, w, m),
                     'w' => AttrMod::Access(r, true, m),
                     'm' => AttrMod::Access(r, w, true),
-                    unknown => panic!("unknown user modifier: {:?}", unknown),
+                    _ => {
+                        self.error_at(
+                            ErrorKind::Internal,
+                            "cannot parse user modifier",
+                            &format!("invalid user modifier flag: `{}`", c),
+                            access_pair.as_span(),
+                        );
+                        res
+                    }
                 },
                 _ => unreachable!(),
             },
         )
     }
 
-    fn parse_primitive_modifier(pair: Pair<Rule>) -> AttrMod {
+    fn parse_primitive_modifier(&mut self, pair: Pair<Rule>) -> AttrMod {
         match pair.as_str() {
             "" => AttrMod::None,
             "readable" => AttrMod::Readable,
             "writable" => AttrMod::Writable,
             "mutable" => AttrMod::Mutable,
-            unknown => panic!("unknown primitive modifier: {:?}", unknown),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse primitive modifier",
+                    &format!("invalid primitive modifier `{}`", pair),
+                    pair.as_span(),
+                );
+                AttrMod::None
+            }
         }
     }
 
-    fn parse_ty(pair: Pair<Rule>) -> Ty {
+    fn parse_ty(&mut self, pair: Pair<Rule>) -> Ty {
         match pair.as_rule() {
-            Rule::Type => Self::parse_ty(pair.into_inner().next().unwrap()),
+            Rule::Type => self.parse_ty(pair.into_inner().next().unwrap()),
             Rule::TypeId => Ty::Name(String::from(pair.as_str())),
-            Rule::PrimitiveType => Self::parse_primitive_ty(pair),
-            Rule::CollectionType => Self::parse_collection_ty(pair),
-            unknown => panic!("unknown type: {:?}", unknown),
+            Rule::PrimitiveType => self.parse_primitive_ty(pair),
+            Rule::CollectionType => self.parse_collection_ty(pair),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse type",
+                    &format!("invalid type `{}`", pair),
+                    pair.as_span(),
+                );
+                ERROR_TY
+            }
         }
     }
 
-    fn parse_primitive_ty(pair: Pair<Rule>) -> Ty {
+    fn parse_primitive_ty(&mut self, pair: Pair<Rule>) -> Ty {
         match pair.as_str() {
             "i8" => Ty::Int(8),
             "i16" => Ty::Int(16),
@@ -182,18 +277,34 @@ impl ConfigParser {
             "i64" => Ty::Int(64),
             "str" => Ty::Str,
             "loc" => Ty::Loc,
-            unknown => panic!("unknown primitive type: {:?}", unknown),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse primitive type",
+                    &format!("invalid primitive type `{}`", pair),
+                    pair.as_span(),
+                );
+                ERROR_TY
+            }
         }
     }
 
-    fn parse_collection_ty(pair: Pair<Rule>) -> Ty {
+    fn parse_collection_ty(&mut self, pair: Pair<Rule>) -> Ty {
         let mut pairs = pair.into_inner();
-        let id = pairs.next().unwrap().as_str();
+        let id_pair = pairs.next().unwrap();
         let ty_pair = pairs.next().unwrap();
-        let ty = Box::new(Type::new(Self::parse_ty(ty_pair)));
-        match id {
+        let ty = Box::new(Type::new(self.parse_ty(ty_pair)));
+        match id_pair.as_str() {
             "arr" => Ty::Array(ty),
-            unknown => panic!("unknown collection type: {:?}", unknown),
+            _ => {
+                self.error_at(
+                    ErrorKind::Internal,
+                    "cannot parse collection type",
+                    &format!("invalid collection type `{}`", id_pair),
+                    id_pair.as_span(),
+                );
+                ERROR_TY
+            }
         }
     }
 }
