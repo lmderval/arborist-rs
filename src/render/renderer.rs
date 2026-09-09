@@ -8,6 +8,7 @@ use minijinja::{context, path_loader, Environment, Error, Template, Value};
 use crate::config::ast::{self, Config, Dec};
 use crate::render::convert_case;
 use crate::render::joiner::joiner;
+use crate::utils::error::MultiError;
 
 const TEMPLATE_EXTS: [&str; 3] = [".jinja", ".jinja2", ".j2"];
 
@@ -189,7 +190,11 @@ fn render_templates(env: &mut Environment, config: &Config, in_place: bool) {
 pub struct Renderer;
 
 impl Renderer {
-    pub fn do_pass<'a>(config: Config<'a>, template: PathBuf) -> Config<'a> {
+    pub fn do_pass<'a>(
+        config: Config<'a>,
+        _errors: &mut MultiError,
+        template: PathBuf,
+    ) -> Config<'a> {
         Self::render(&config, &Some(template), false);
         config
     }

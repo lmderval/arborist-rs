@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::config::ast::*;
 use crate::config::visitor::VoidVisitor;
+use crate::utils::error::MultiError;
 
 pub struct PrettyPrinter {
     output: String,
@@ -17,7 +18,7 @@ impl PrettyPrinter {
         }
     }
 
-    pub fn do_pass(config: Config) -> Config {
+    pub fn do_pass<'a>(config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
         Self::print(&config);
         config
     }

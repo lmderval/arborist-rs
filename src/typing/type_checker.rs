@@ -6,6 +6,7 @@ use linked_hash_map::LinkedHashMap;
 
 use crate::config::ast::*;
 use crate::config::visitor::VoidVisitor;
+use crate::utils::error::MultiError;
 
 pub struct TypeChecker {
     checked_node_parents: HashSet<*const RefCell<Dec>>,
@@ -18,7 +19,7 @@ impl TypeChecker {
         }
     }
 
-    pub fn do_pass(config: Config) -> Config {
+    pub fn do_pass<'a>(config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
         Self::new().visit_config(&config);
         config
     }

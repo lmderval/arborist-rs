@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::process::exit;
 
 use clap::{Parser, Subcommand};
 
@@ -9,10 +10,12 @@ use crate::render::renderer::Renderer;
 use crate::typing::exp_resolver::ExpResolver;
 use crate::typing::name_resolver::NameResolver;
 use crate::typing::type_checker::TypeChecker;
+use crate::utils::error::MultiError;
 
 pub mod config;
 pub mod render;
 pub mod typing;
+pub mod utils;
 
 #[derive(Parser)]
 #[command(version, about = "An AST generator for any language", long_about = None)]
@@ -38,23 +41,24 @@ enum Commands {
 }
 
 macro_rules! run_passes {
-    ($config:expr) => {
+    (($config:expr, $errors:ident)) => {
         $config
     };
 
     (
-        $config:expr
+        ($config:expr, $errors:ident)
         => $first_pass:ident$(($($first_arg:expr),+$(,)?))?
         $(=> $pass:ident$(($($arg:expr),+$(,)?))?)*
     ) => {
         run_passes!(
-            $first_pass::do_pass($config $($(, $first_arg)+)?)
+            ($first_pass::do_pass($config, &mut $errors $($(, $first_arg)+)?), $errors)
             $(=> $pass$(($($arg),+))?)*
         )
     };
 }
 
 fn main() {
+    let mut errors = MultiError::new();
     let cli = Cli::parse();
 
     let unparsed_config = fs::read_to_string(&cli.config).expect("cannot read file");
@@ -62,11 +66,19 @@ fn main() {
     config.set_path(&cli.config);
 
     let typed_config = run_passes!(
-        config
+        (config, errors)
         => ExpResolver
         => NameResolver
         => TypeChecker
     );
+
+    for error in errors.iter() {
+        println!("{}", error);
+    }
+
+    if let Some(error_kind) = errors.error_kind() {
+        exit(error_kind as i32);
+    }
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print(&typed_config),

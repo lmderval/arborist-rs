@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use crate::config::ast::*;
 use crate::config::visitor::MutVoidVisitor;
+use crate::utils::error::MultiError;
 
 pub struct NameResolver {
     decs: HashMap<String, Rc<RefCell<Dec>>>,
@@ -22,7 +23,7 @@ impl NameResolver {
         Self { decs }
     }
 
-    pub fn do_pass(mut config: Config) -> Config {
+    pub fn do_pass<'a>(mut config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
         Self::new(&config).visit_config(&mut config);
         config
     }

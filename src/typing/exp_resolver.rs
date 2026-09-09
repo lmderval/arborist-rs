@@ -1,5 +1,6 @@
 use crate::config::ast::*;
 use crate::config::visitor::MutVoidVisitor;
+use crate::utils::error::MultiError;
 
 pub struct ExpResolver {
     ty: Option<Box<Type>>,
@@ -10,7 +11,7 @@ impl ExpResolver {
         Self { ty: None }
     }
 
-    pub fn do_pass(mut config: Config) -> Config {
+    pub fn do_pass<'a>(mut config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
         Self::new().visit_config(&mut config);
         config
     }
