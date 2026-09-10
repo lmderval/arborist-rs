@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::slice::Iter;
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub enum ErrorKind {
     Internal = 1,
     Cli,
@@ -33,6 +33,14 @@ impl Error {
             kind,
             message: message.into(),
         }
+    }
+
+    pub fn error_kind(&self) -> &ErrorKind {
+        &self.kind
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
     }
 }
 

@@ -6,97 +6,114 @@ use linked_hash_map::LinkedHashMap;
 
 use crate::config::ast::*;
 use crate::config::visitor::VoidVisitor;
-use crate::utils::error::MultiError;
+use crate::utils::error::{ErrorKind, MultiError};
 
-pub struct TypeChecker {
+pub struct TypeChecker<'err> {
     checked_node_parents: HashSet<*const RefCell<Dec>>,
+    errors: &'err mut MultiError,
 }
 
-impl TypeChecker {
-    fn new() -> Self {
+impl<'err> TypeChecker<'err> {
+    fn new(errors: &'err mut MultiError) -> Self {
         Self {
             checked_node_parents: HashSet::new(),
+            errors,
         }
     }
 
-    pub fn do_pass<'a>(config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
-        Self::new().visit_config(&config);
+    pub fn do_pass<'a>(config: Config<'a>, errors: &mut MultiError) -> Config<'a> {
+        TypeChecker::new(errors).visit_config(&config);
         config
     }
 
     fn check_no_circular_inheritance(
-        &self,
+        &mut self,
         dec: &Rc<RefCell<Dec>>,
         name: &str,
         children: &LinkedHashMap<*const RefCell<Dec>, Rc<RefCell<Dec>>>,
-    ) -> Result<(), String> {
+    ) -> bool {
         if children.contains_key(&Rc::as_ptr(dec)) {
             let chain = children
                 .iter()
                 .map(|(_, d)| String::from(d.borrow().name()))
                 .reduce(|acc, p| format!("{} -> {}", acc, p))
                 .unwrap();
-            return Err(format!(
-                "circular inheritance: `{}` is its own parent: `{} -> {}`",
-                name, chain, name
-            ));
+            self.errors.push(
+                ErrorKind::Type,
+                &format!(
+                    "circular inheritance: `{}` is its own parent: `{} -> {}`",
+                    name, chain, name
+                ),
+            );
+            false
+        } else {
+            true
         }
-        Ok(())
     }
 
     fn check_declared_parent<'a>(
-        &self,
+        &mut self,
         name: &str,
         parent: &'a Type,
-    ) -> Result<(&'a str, Rc<RefCell<Dec>>), String> {
+    ) -> Option<(&'a str, Rc<RefCell<Dec>>)> {
         let Some(parent_dec) = &parent.dec else {
-            return Err(format!(
-                "invalid parent in `{}`: `{}` is not a declared type",
-                name, parent.ty
-            ));
+            self.errors.push(
+                ErrorKind::Type,
+                &format!(
+                    "invalid parent in `{}`: `{}` is not a declared type",
+                    name, parent.ty
+                ),
+            );
+            return None;
         };
         let Ty::Name(parent_name) = &parent.ty else {
-            unreachable!("unexpected declared but unnamed type");
+            self.errors
+                .push(ErrorKind::Internal, "unexpected declared but unnamed type");
+            return None;
         };
-        Ok((parent_name, parent_dec.upgrade().unwrap()))
+        Some((parent_name, parent_dec.upgrade().unwrap()))
     }
 
     fn check_duplicate_parent(
-        &self,
+        &mut self,
         name: &str,
         parent_name: &str,
         parent_dec: &Rc<RefCell<Dec>>,
         all_parents: &HashSet<*const RefCell<Dec>>,
-    ) -> Result<(), String> {
+    ) {
         if all_parents.contains(&Rc::as_ptr(parent_dec)) {
-            return Err(format!(
-                "invalid parent in `{}`: parent type `{}` is already present",
-                name, parent_name
-            ));
+            self.errors.push(
+                ErrorKind::Type,
+                &format!(
+                    "invalid parent in `{}`: parent type `{}` is already present",
+                    name, parent_name
+                ),
+            );
         }
-        Ok(())
     }
 
-    fn check_single_parent_node(&self, name: &str, parent: &Option<String>) -> Result<(), String> {
+    fn check_single_parent_node(&mut self, name: &str, parent: &Option<String>) {
         if let Some(parent_name) = parent {
-            return Err(format!(
-                "invalid parent in `{}`: already has a parent node `{}`",
-                name, parent_name
-            ));
+            self.errors.push(
+                ErrorKind::Type,
+                &format!(
+                    "invalid parent in `{}`: already has a parent node `{}`",
+                    name, parent_name
+                ),
+            );
         }
-        Ok(())
     }
 
     fn check_parent_is_node(
         &mut self,
         dec: &Rc<RefCell<Dec>>,
         children: &mut LinkedHashMap<*const RefCell<Dec>, Rc<RefCell<Dec>>>,
-    ) -> Result<bool, String> {
+    ) -> bool {
         if let Dec::Node { name, parents, .. } = &*dec.borrow() {
-            self.check_node_parents(dec, name, parents, children)?;
-            Ok(true)
+            self.check_node_parents(dec, name, parents, children);
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 
@@ -107,20 +124,24 @@ impl TypeChecker {
         recorded_parents: &mut HashSet<*const RefCell<Dec>>,
         parent_node: &mut Option<String>,
         children: &mut LinkedHashMap<*const RefCell<Dec>, Rc<RefCell<Dec>>>,
-    ) -> Result<(), String> {
-        let (parent_name, parent_dec) = self.check_declared_parent(name, &parent)?;
-        self.check_duplicate_parent(name, parent_name, &parent_dec, recorded_parents)?;
-        if self.check_parent_is_node(&parent_dec, children)? {
-            self.check_single_parent_node(name, parent_node)?;
+    ) {
+        let Some((parent_name, parent_dec)) = self.check_declared_parent(name, &parent) else {
+            return;
+        };
+        self.check_duplicate_parent(name, parent_name, &parent_dec, recorded_parents);
+        if self.check_parent_is_node(&parent_dec, children) {
+            self.check_single_parent_node(name, parent_node);
             *parent_node = Some(parent_name.into());
         } else {
-            return Err(format!(
-                "invalid parent in `{}`: `{}` is not a node",
-                name, parent_name
-            ));
+            self.errors.push(
+                ErrorKind::Type,
+                &format!(
+                    "invalid parent in `{}`: `{}` is not a node",
+                    name, parent_name
+                ),
+            );
         }
         recorded_parents.insert(Rc::as_ptr(&parent_dec));
-        Ok(())
     }
 
     fn check_node_parents(
@@ -129,39 +150,34 @@ impl TypeChecker {
         name: &str,
         parents: &[Box<Type>],
         children: &mut LinkedHashMap<*const RefCell<Dec>, Rc<RefCell<Dec>>>,
-    ) -> Result<(), String> {
+    ) {
         if self.checked_node_parents.contains(&Rc::as_ptr(dec)) {
-            return Ok(());
+            return;
         }
-        self.check_no_circular_inheritance(dec, name, children)?;
+        if !self.check_no_circular_inheritance(dec, name, children) {
+            return;
+        }
         children.insert(Rc::as_ptr(dec), Rc::clone(dec));
-        let result = (|| {
-            let mut recorded_parents = HashSet::new();
-            let mut parent_node = None;
-            for parent in parents {
-                self.check_node_parent(
-                    name,
-                    parent,
-                    &mut recorded_parents,
-                    &mut parent_node,
-                    children,
-                )?;
-            }
-            Ok(())
-        })();
+        let mut recorded_parents = HashSet::new();
+        let mut parent_node = None;
+        for parent in parents {
+            self.check_node_parent(
+                name,
+                parent,
+                &mut recorded_parents,
+                &mut parent_node,
+                children,
+            );
+        }
         children.remove(&Rc::as_ptr(dec));
         self.checked_node_parents.insert(Rc::as_ptr(dec));
-        result
     }
 }
 
-impl VoidVisitor for TypeChecker {
+impl VoidVisitor for TypeChecker<'_> {
     fn visit_dec(&mut self, dec: &Rc<RefCell<Dec>>) {
         if let Dec::Node { name, parents, .. } = &*dec.borrow() {
-            if let Err(err) = self.check_node_parents(dec, name, parents, &mut LinkedHashMap::new())
-            {
-                panic!("{}", err);
-            }
+            self.check_node_parents(dec, name, parents, &mut LinkedHashMap::new());
         }
         self.visit_dec_default(dec);
     }
@@ -173,20 +189,23 @@ mod tests {
 
     #[test]
     fn test_check_parent_declared_missing() {
+        let mut errors = MultiError::new();
         let parent_type = Type::new(Ty::Name("UndeclaredParent".into()));
         let node_name = "MyNode".to_string();
-        let result = TypeChecker::new().check_declared_parent(&node_name, &parent_type);
-        match result {
-            Err(err) => assert_eq!(
-                err,
-                "invalid parent in `MyNode`: `UndeclaredParent` is not a declared type"
-            ),
-            Ok(_) => panic!("expected Err"),
-        }
+        let result = TypeChecker::new(&mut errors).check_declared_parent(&node_name, &parent_type);
+        assert!(result.is_none());
+        assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
+        let err = errors.iter().next().unwrap();
+        assert_eq!(err.error_kind(), &ErrorKind::Type);
+        assert_eq!(
+            err.message(),
+            "invalid parent in `MyNode`: `UndeclaredParent` is not a declared type"
+        );
     }
 
     #[test]
     fn test_check_duplicate_parent() {
+        let mut errors = MultiError::new();
         let dummy_dec = Rc::new(RefCell::new(Dec::Enum {
             name: "Foo".into(),
             values: vec![],
@@ -196,33 +215,39 @@ mod tests {
 
         let node_name = "MyNode".to_string();
         let parent_name = "Foo".to_string();
-        let result = TypeChecker::new().check_duplicate_parent(
+        TypeChecker::new(&mut errors).check_duplicate_parent(
             &node_name,
             &parent_name,
             &dummy_dec,
             &recorded,
         );
-        assert!(result.is_err());
+        assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
+        let err = errors.iter().next().unwrap();
+        assert_eq!(err.error_kind(), &ErrorKind::Type);
         assert_eq!(
-            result.unwrap_err(),
+            err.message(),
             "invalid parent in `MyNode`: parent type `Foo` is already present"
         );
     }
 
     #[test]
     fn test_check_single_parent_node() {
+        let mut errors = MultiError::new();
         let node_name = "MyNode".to_string();
         let parent_node = Some("ExistingParent".to_string());
-        let result = TypeChecker::new().check_single_parent_node(&node_name, &parent_node);
-        assert!(result.is_err());
+        TypeChecker::new(&mut errors).check_single_parent_node(&node_name, &parent_node);
+        assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
+        let err = errors.iter().next().unwrap();
+        assert_eq!(err.error_kind(), &ErrorKind::Type);
         assert_eq!(
-            result.unwrap_err(),
+            err.message(),
             "invalid parent in `MyNode`: already has a parent node `ExistingParent`"
         );
     }
 
     #[test]
     fn test_check_parent_is_node() {
+        let mut errors = MultiError::new();
         let node_dec = Rc::new(RefCell::new(Dec::Node {
             name: "SomeNode".into(),
             parents: vec![],
@@ -230,30 +255,28 @@ mod tests {
         }));
         let mut decs = LinkedHashMap::new();
 
-        let result = TypeChecker::new().check_parent_is_node(&node_dec, &mut decs);
-        match result {
-            Err(_) => panic!("expected Ok"),
-            Ok(is_node) => assert!(is_node),
-        }
+        let is_node = TypeChecker::new(&mut errors).check_parent_is_node(&node_dec, &mut decs);
+        assert!(is_node);
+        assert!(errors.is_empty());
     }
 
     #[test]
     fn test_check_parent_is_not_node() {
+        let mut errors = MultiError::new();
         let enum_dec = Rc::new(RefCell::new(Dec::Enum {
             name: "SomeEnum".into(),
             values: vec![],
         }));
         let mut decs = LinkedHashMap::new();
 
-        let result = TypeChecker::new().check_parent_is_node(&enum_dec, &mut decs);
-        match result {
-            Err(_) => panic!("expected Ok"),
-            Ok(is_node) => assert!(!is_node),
-        }
+        let is_node = TypeChecker::new(&mut errors).check_parent_is_node(&enum_dec, &mut decs);
+        assert!(!is_node);
+        assert!(errors.is_empty());
     }
 
     #[test]
     fn test_check_circular_inheritance() {
+        let mut errors = MultiError::new();
         let node_dec = Rc::new(RefCell::new(Dec::Node {
             name: "A".into(),
             parents: vec![],
@@ -263,10 +286,14 @@ mod tests {
         decs.insert(Rc::as_ptr(&node_dec), Rc::clone(&node_dec));
 
         let node_name = "A".to_string();
-        let result = TypeChecker::new().check_no_circular_inheritance(&node_dec, &node_name, &decs);
-        assert!(result.is_err());
+        let ok = TypeChecker::new(&mut errors)
+            .check_no_circular_inheritance(&node_dec, &node_name, &decs);
+        assert!(!ok);
+        assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
+        let err = errors.iter().next().unwrap();
+        assert_eq!(err.error_kind(), &ErrorKind::Type);
         assert_eq!(
-            result.unwrap_err(),
+            err.message(),
             "circular inheritance: `A` is its own parent: `A -> A`"
         );
     }
