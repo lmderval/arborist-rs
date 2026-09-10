@@ -1,38 +1,42 @@
 use crate::config::ast::*;
 use crate::config::visitor::MutVoidVisitor;
-use crate::utils::error::MultiError;
+use crate::utils::error::{ErrorKind, MultiError};
 
-pub struct ExpResolver {
+pub struct ExpResolver<'err> {
     ty: Option<Box<Type>>,
+    errors: &'err mut MultiError,
 }
 
-impl ExpResolver {
-    fn new() -> Self {
-        Self { ty: None }
+impl<'err> ExpResolver<'err> {
+    fn new(errors: &'err mut MultiError) -> Self {
+        Self { ty: None, errors }
     }
 
-    pub fn do_pass<'a>(mut config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
-        Self::new().visit_config(&mut config);
+    pub fn do_pass<'a>(mut config: Config<'a>, errors: &mut MultiError) -> Config<'a> {
+        ExpResolver::new(errors).visit_config(&mut config);
         config
     }
 
-    fn type_value(&mut self, value: &mut Value) -> Result<Box<Type>, String> {
+    fn type_value(&mut self, value: &mut Value) -> Box<Type> {
         let old_ty = self.ty.take();
         self.visit_value(value);
-        let Some(ty) = self.ty.take() else {
-            return Err("unexpected untyped value".into());
+        let ty = match self.ty.take() {
+            Some(ty) => ty,
+            None => {
+                self.errors
+                    .push(ErrorKind::Internal, "unexpected untyped value");
+                Box::new(Type::new(ERROR_TY))
+            }
         };
         self.ty = old_ty;
-        Ok(ty)
+        ty
     }
 }
 
-impl MutVoidVisitor for ExpResolver {
+impl MutVoidVisitor for ExpResolver<'_> {
     fn visit_exp(&mut self, exp: &mut Exp) {
-        match self.type_value(&mut exp.value) {
-            Ok(ty) => exp.type_exp(ty),
-            Err(err) => panic!("{}", err),
-        }
+        let ty = self.type_value(&mut exp.value);
+        exp.type_exp(ty);
     }
 
     fn visit_int_val(&mut self, _val: &i64) {

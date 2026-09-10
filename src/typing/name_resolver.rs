@@ -4,39 +4,39 @@ use std::rc::Rc;
 
 use crate::config::ast::*;
 use crate::config::visitor::MutVoidVisitor;
-use crate::utils::error::MultiError;
+use crate::utils::error::{ErrorKind, MultiError};
 
-pub struct NameResolver {
+pub struct NameResolver<'err> {
     decs: HashMap<String, Rc<RefCell<Dec>>>,
+    errors: &'err mut MultiError,
 }
 
-impl NameResolver {
-    fn new(config: &Config) -> Self {
+impl<'err> NameResolver<'err> {
+    fn new(config: &Config, errors: &'err mut MultiError) -> Self {
         let decs = config
             .decs
             .iter()
-            .map(|dec| match &*dec.borrow() {
-                Dec::Node { name, .. } | Dec::Enum { name, .. } => (name.clone(), Rc::clone(dec)),
-                _ => panic!("unexpected declaration: should be a Node or an Enum"),
-            })
+            .map(|dec| (dec.borrow().name().into(), Rc::clone(dec)))
             .collect();
-        Self { decs }
+        Self { decs, errors }
     }
 
-    pub fn do_pass<'a>(mut config: Config<'a>, _errors: &mut MultiError) -> Config<'a> {
-        Self::new(&config).visit_config(&mut config);
+    pub fn do_pass<'a>(mut config: Config<'a>, errors: &mut MultiError) -> Config<'a> {
+        NameResolver::new(&config, errors).visit_config(&mut config);
         config
     }
 }
 
-impl MutVoidVisitor for NameResolver {
+impl MutVoidVisitor for NameResolver<'_> {
     fn visit_type(&mut self, ty: &mut Box<Type>) {
         match &mut ty.ty {
             Ty::Name(name) => {
-                let Some(dec) = self.decs.get(name) else {
-                    panic!("unkwnown type: {}", name);
+                if let Some(dec) = self.decs.get(name) {
+                    ty.define(Rc::downgrade(dec));
+                } else {
+                    self.errors
+                        .push(ErrorKind::Type, &format!("no type named `{}`", name));
                 };
-                ty.define(Rc::downgrade(dec));
             }
             Ty::Int(_) | Ty::Str | Ty::Loc => {}
             Ty::Array(ty) => self.visit_type(ty),
