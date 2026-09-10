@@ -1,6 +1,4 @@
-use std::fs;
 use std::path::PathBuf;
-use std::process::exit;
 
 use clap::{Parser, Subcommand};
 
@@ -10,7 +8,8 @@ use crate::render::renderer::Renderer;
 use crate::typing::exp_resolver::ExpResolver;
 use crate::typing::name_resolver::NameResolver;
 use crate::typing::type_checker::TypeChecker;
-use crate::utils::error::{ErrorKind, MultiError};
+use crate::utils::error::MultiError;
+use crate::utils::file_reader::FileReader;
 
 pub mod config;
 pub mod render;
@@ -40,60 +39,18 @@ enum Commands {
     },
 }
 
-macro_rules! run_passes {
-    (($config:expr, $errors:ident)) => {
-        $config
-    };
-
-    (
-        ($config:expr, $errors:ident)
-        => $first_pass:ident$(($($first_arg:expr),+$(,)?))?
-        $(=> $pass:ident$(($($arg:expr),+$(,)?))?)*
-    ) => {
-        run_passes!(
-            ($first_pass::do_pass($config, &mut $errors $($(, $first_arg)+)?), $errors)
-            $(=> $pass$(($($arg),+))?)*
-        )
-    };
-}
-
-struct FileReader;
-
-impl FileReader {
-    fn do_pass(file: &PathBuf, errors: &mut MultiError) -> String {
-        match fs::read_to_string(file) {
-            Ok(source) => source,
-            Err(err) => {
-                errors.push(
-                    ErrorKind::Cli,
-                    &format!("unable to read `{}`: {}", file.to_string_lossy(), err),
-                );
-                String::new()
-            }
-        }
-    }
-}
-
 fn main() {
     let mut errors = MultiError::new();
     let cli = Cli::parse();
 
     let config = run_passes!(
         (&cli.config, errors)
-        => FileReader
+        => FileReader | exit_on_error
         => ConfigParser(&cli.config)
         => ExpResolver
         => NameResolver
-        => TypeChecker
+        => TypeChecker | exit_on_error
     );
-
-    for error in errors.iter() {
-        println!("{}", error);
-    }
-
-    if let Some(error_kind) = errors.error_kind() {
-        exit(error_kind as i32);
-    }
 
     match cli.command {
         Commands::PrettyPrint => PrettyPrinter::print(&config),
