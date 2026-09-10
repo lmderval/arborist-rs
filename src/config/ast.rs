@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Ty {
     Name(String),
     Int(u8),
@@ -39,7 +39,7 @@ impl PartialEq for Ty {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Type {
     pub dec: Option<Weak<RefCell<Dec>>>,
     pub ty: Ty,
