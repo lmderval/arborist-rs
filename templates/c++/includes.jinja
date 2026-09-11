@@ -33,6 +33,10 @@
         {# std::array #}
         {% set includes.standard = includes.standard + ["array"] %}
         {% do add_type_header_includes(ty.ty.type, includes) %}
+    {% elif ty.ty.kind == "Vector" %}
+        {# std::vector #}
+        {% set includes.standard = includes.standard + ["vector"] %}
+        {% do add_type_header_includes(ty.ty.type, includes) %}
     {% endif %}
 {% endmacro -%}
 
@@ -68,7 +72,7 @@
                    | selectattr("kind", "eq", "Attr")
                    | map(attribute="ty") %}
     {% if (
-        types | selectattr("ty.kind", "in", ["Str", "Loc", "Array"])
+        types | selectattr("ty.kind", "in", ["Str", "Loc", "Array", "Vector"])
     ) or (
         types
         | selectattr("ty.kind", "eq", "Name")

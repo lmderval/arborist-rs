@@ -12,6 +12,7 @@ public:
     void operator()(const IntExp& e) override;
     void operator()(const UnaryExp& e) override;
     void operator()(const BinaryExp& e) override;
+    void operator()(const TupleExp& e) override;
 
     void print(const Exp& e);
     void println(const Exp& e);

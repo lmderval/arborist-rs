@@ -41,7 +41,7 @@ PrimitiveType = { "i8" | "i16" | "i32" | "i64" | "str" | "loc" }
 
 CollectionType = { CollectionId ~ "<" ~ Type ~ ">" }
 
-CollectionId = { "arr" }
+CollectionId = { "arr" | "vec" }
 
 VarId = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | "_")* }
 

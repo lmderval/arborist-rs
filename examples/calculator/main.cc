@@ -8,9 +8,13 @@
 
 int main() {
     location loc = {};
-    auto exp = arborist::make_propagate_const_unique<BinaryExp>(
+    std::vector<arborist::propagate_const_unique_ptr<Exp>> exps;
+    exps.push_back(arborist::make_propagate_const_unique<BinaryExp>(
         loc, PLUS, arborist::make_propagate_const_unique<IntExp>(loc, 42),
-        arborist::make_propagate_const_unique<IntExp>(loc, 21));
+        arborist::make_propagate_const_unique<IntExp>(loc, 21)));
+    exps.push_back(arborist::make_propagate_const_unique<IntExp>(loc, 84));
+    auto exp = arborist::make_propagate_const_unique<TupleExp>(
+        loc, std::move(exps));
 
     PrettyPrinter printer(std::cout);
     printer.println(*exp);

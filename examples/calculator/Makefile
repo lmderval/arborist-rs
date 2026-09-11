@@ -23,7 +23,9 @@ ARBONODE = \
 	unary_exp.cc \
 	unary_exp.hh \
 	binary_exp.cc \
-	binary_exp.hh
+	binary_exp.hh \
+	tuple_exp.cc \
+	tuple_exp.hh
 
 GENERATED = \
 	$(ARBOGEN) \
@@ -34,6 +36,7 @@ SRC = \
 	int_exp.cc \
 	unary_exp.cc \
 	binary_exp.cc \
+	tuple_exp.cc \
 	visitor.cc \
 	pretty_printer.cc \
 	cloner.cc \

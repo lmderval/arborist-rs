@@ -31,3 +31,7 @@ node BinaryExp(Exp) {
   mutable lhs: Exp;
   mutable rhs: Exp;
 }
+
+node TupleExp(Exp) {
+  mutable exps: vec<Exp>;
+}

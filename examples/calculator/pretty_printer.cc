@@ -25,6 +25,19 @@ void PrettyPrinter::operator()(const BinaryExp& e) {
     e.rhs_get().accept(*this);
 }
 
+void PrettyPrinter::operator()(const TupleExp& e) {
+    os_ << "(";
+    bool first = true;
+    for (const auto& exp : e.exps_get()) {
+        if (!first) {
+            os_ << ", ";
+        }
+        exp->accept(*this);
+        first = false;
+    }
+    os_ << ")";
+}
+
 void PrettyPrinter::print(const Exp& e) {
     e.accept(*this);
 }

@@ -296,6 +296,7 @@ impl<'err> ConfigParser<'err> {
         let ty = Box::new(Type::new(self.parse_ty(ty_pair)));
         match id_pair.as_str() {
             "arr" => Ty::Array(ty),
+            "vec" => Ty::Vector(ty),
             _ => {
                 self.error_at(
                     ErrorKind::Internal,

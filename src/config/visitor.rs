@@ -148,6 +148,7 @@ macro_rules! define_void_visitor {
                     Ty::Str => self.visit_str_ty(),
                     Ty::Loc => self.visit_loc_ty(),
                     Ty::Array(ty) => self.visit_array_ty(ty),
+                    Ty::Vector(ty) => self.visit_vector_ty(ty),
                     Ty::Any => self.visit_any_ty(),
                 }
             }
@@ -181,6 +182,14 @@ macro_rules! define_void_visitor {
             }
 
             fn visit_array_ty_default(&mut self, ty: &$($mut)? Box<Type>) {
+                self.visit_type(ty);
+            }
+
+            fn visit_vector_ty(&mut self, ty: &$($mut)? Box<Type>) {
+                self.visit_vector_ty_default(ty);
+            }
+
+            fn visit_vector_ty_default(&mut self, ty: &$($mut)? Box<Type>) {
                 self.visit_type(ty);
             }
 

@@ -39,7 +39,7 @@ impl MutVoidVisitor for NameResolver<'_> {
                 };
             }
             Ty::Int(_) | Ty::Str | Ty::Loc | Ty::Any => {}
-            Ty::Array(ty) => self.visit_type(ty),
+            Ty::Array(ty) | Ty::Vector(ty) => self.visit_type(ty),
         }
     }
 
