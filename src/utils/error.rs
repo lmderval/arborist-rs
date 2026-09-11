@@ -65,6 +65,10 @@ impl MultiError {
         self.0.is_empty()
     }
 
+    pub fn count(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn push(&mut self, kind: ErrorKind, message: &str) {
         self.0.push(Error::new(kind, message));
     }
