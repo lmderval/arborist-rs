@@ -83,17 +83,15 @@ impl VoidVisitor for PrettyPrinter {
         match parents {
             v if v.is_empty() => {}
             v if v.len() == 1 => {
-                self.output.push_str("(");
-                self.visit_type(parents.get(0).unwrap());
-                self.output.push_str(&format!("{})", self.indent_str()));
+                self.output
+                    .push_str(&format!("({})", parents.get(0).unwrap().ty));
             }
             _ => {
                 self.output.push_str("(\n");
                 self.indent += 1;
                 parents.iter().for_each(|p| {
-                    self.output.push_str(&self.indent_str());
-                    self.visit_type(p);
-                    self.output.push_str(",\n");
+                    self.output
+                        .push_str(&format!("{}{},\n", self.indent_str(), p.ty));
                 });
                 self.indent -= 1;
                 self.output.push_str(&format!("{})", self.indent_str()));
