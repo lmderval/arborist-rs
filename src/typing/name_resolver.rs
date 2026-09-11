@@ -38,7 +38,7 @@ impl MutVoidVisitor for NameResolver<'_> {
                         .push(ErrorKind::Type, &format!("no type named `{}`", name));
                 };
             }
-            Ty::Int(_) | Ty::Str | Ty::Loc => {}
+            Ty::Int(_) | Ty::Str | Ty::Loc | Ty::Any => {}
             Ty::Array(ty) => self.visit_type(ty),
         }
     }

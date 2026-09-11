@@ -43,6 +43,11 @@ impl Serialize for Ty {
                 state.serialize_field("type", t)?;
                 state.end()
             }
+            Self::Any => {
+                let mut state = serializer.serialize_struct("Any", 1)?;
+                serialize_kind!(state; "Any");
+                state.end()
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ pub enum Ty {
     Str,
     Loc,
     Array(Box<Type>),
+    Any,
 }
 
 pub const ERROR_TY: Ty = Ty::Int(0);
@@ -23,6 +24,7 @@ impl Display for Ty {
             Ty::Str => write!(f, "str"),
             Ty::Loc => write!(f, "loc"),
             Ty::Array(ty) => write!(f, "arr<{}>", ty.ty),
+            Ty::Any => write!(f, "any"),
         }
     }
 }

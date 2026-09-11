@@ -55,6 +55,7 @@ impl MutVoidVisitor for ExpResolver<'_> {
             .reduce(|res, ty| if res == ty { res } else { None })
             .and_then(|x| x)
             .cloned()
+            .or_else(|| Some(Box::new(Type::new(Ty::Any))))
             .and_then(|x| Some(Box::new(Type::new(Ty::Array(x)))));
     }
 }
@@ -103,6 +104,32 @@ mod tests {
         assert!(errors.is_empty());
         assert!(ty.dec.is_none());
         assert_eq!(ty.ty, Ty::Array(Box::new(Type::new(Ty::Int(64)))));
+    }
+
+    #[test]
+    fn test_type_value_array_empty() {
+        let mut errors = MultiError::new();
+        let mut resolver = ExpResolver::new(&mut errors);
+        let mut val = Value::Array(vec![]);
+        let ty = resolver.type_value(&mut val);
+        assert!(errors.is_empty());
+        assert!(ty.dec.is_none());
+        assert_eq!(ty.ty, Ty::Array(Box::new(Type::new(Ty::Any))));
+    }
+
+    #[test]
+    fn test_type_value_array_any() {
+        let mut errors = MultiError::new();
+        let mut resolver = ExpResolver::new(&mut errors);
+        let mut val = Value::Array(vec![
+            Exp::new(Value::Int(1)),
+            Exp::new(Value::Str("Hello".to_string())),
+            Exp::new(Value::Array(vec![])),
+        ]);
+        let ty = resolver.type_value(&mut val);
+        assert!(errors.is_empty());
+        assert!(ty.dec.is_none());
+        assert_eq!(ty.ty, Ty::Array(Box::new(Type::new(Ty::Any))));
     }
 
     #[test]
@@ -243,5 +270,47 @@ value = [
                 assert_eq!(inner1_exp_ty.ty, Ty::Int(64));
             }
         }
+    }
+
+    #[test]
+    fn test_check_array_any_expression() {
+        let mut errors = MultiError::new();
+        let file = PathBuf::new();
+        let source = r#"
+value = [
+    1,
+    "hello",
+    [],
+];
+"#;
+        let config = run_passes!(
+            (source.into(), errors)
+            => ConfigParser(&file)
+            => ExpResolver
+        );
+        assert!(errors.is_empty());
+        let value = config.vars.get("value").unwrap();
+        let value_ty = value.exp.ty.as_ref().unwrap();
+        assert!(value_ty.dec.is_none());
+        assert_eq!(value_ty.ty, Ty::Array(Box::new(Type::new(Ty::Any))));
+        let Value::Array(values) = &value.exp.value else {
+            assert!(false);
+            return;
+        };
+
+        let value_int = &values[0];
+        let value_int_ty = value_int.ty.as_ref().unwrap();
+        assert!(value_int_ty.dec.is_none());
+        assert_eq!(value_int_ty.ty, Ty::Int(64));
+
+        let value_str = &values[1];
+        let value_str_ty = value_str.ty.as_ref().unwrap();
+        assert!(value_str_ty.dec.is_none());
+        assert_eq!(value_str_ty.ty, Ty::Str);
+
+        let value_arr = &values[2];
+        let value_arr_ty = value_arr.ty.as_ref().unwrap();
+        assert!(value_arr_ty.dec.is_none());
+        assert_eq!(value_arr_ty.ty, Ty::Array(Box::new(Type::new(Ty::Any))));
     }
 }
