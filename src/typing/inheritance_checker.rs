@@ -8,12 +8,12 @@ use crate::config::ast::*;
 use crate::config::visitor::VoidVisitor;
 use crate::utils::error::{ErrorKind, MultiError};
 
-pub struct TypeChecker<'err> {
+pub struct InheritanceChecker<'err> {
     checked_node_parents: HashSet<*const RefCell<Dec>>,
     errors: &'err mut MultiError,
 }
 
-impl<'err> TypeChecker<'err> {
+impl<'err> InheritanceChecker<'err> {
     fn new(errors: &'err mut MultiError) -> Self {
         Self {
             checked_node_parents: HashSet::new(),
@@ -22,7 +22,7 @@ impl<'err> TypeChecker<'err> {
     }
 
     pub fn do_pass<'a>(config: Config<'a>, errors: &mut MultiError) -> Config<'a> {
-        TypeChecker::new(errors).visit_config(&config);
+        InheritanceChecker::new(errors).visit_config(&config);
         config
     }
 
@@ -174,7 +174,7 @@ impl<'err> TypeChecker<'err> {
     }
 }
 
-impl VoidVisitor for TypeChecker<'_> {
+impl VoidVisitor for InheritanceChecker<'_> {
     fn visit_dec(&mut self, dec: &Rc<RefCell<Dec>>) {
         if let Dec::Node { name, parents, .. } = &*dec.borrow() {
             self.check_node_parents(dec, name, parents, &mut LinkedHashMap::new());
@@ -192,7 +192,8 @@ mod tests {
         let mut errors = MultiError::new();
         let parent_type = Type::new(Ty::Name("UndeclaredParent".into()));
         let node_name = "MyNode".to_string();
-        let result = TypeChecker::new(&mut errors).check_declared_parent(&node_name, &parent_type);
+        let result =
+            InheritanceChecker::new(&mut errors).check_declared_parent(&node_name, &parent_type);
         assert!(result.is_none());
         assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
         let err = errors.iter().next().unwrap();
@@ -215,7 +216,7 @@ mod tests {
 
         let node_name = "MyNode".to_string();
         let parent_name = "Foo".to_string();
-        TypeChecker::new(&mut errors).check_duplicate_parent(
+        InheritanceChecker::new(&mut errors).check_duplicate_parent(
             &node_name,
             &parent_name,
             &dummy_dec,
@@ -235,7 +236,7 @@ mod tests {
         let mut errors = MultiError::new();
         let node_name = "MyNode".to_string();
         let parent_node = Some("ExistingParent".to_string());
-        TypeChecker::new(&mut errors).check_single_parent_node(&node_name, &parent_node);
+        InheritanceChecker::new(&mut errors).check_single_parent_node(&node_name, &parent_node);
         assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
         let err = errors.iter().next().unwrap();
         assert_eq!(err.error_kind(), &ErrorKind::Type);
@@ -255,7 +256,8 @@ mod tests {
         }));
         let mut decs = LinkedHashMap::new();
 
-        let is_node = TypeChecker::new(&mut errors).check_parent_is_node(&node_dec, &mut decs);
+        let is_node =
+            InheritanceChecker::new(&mut errors).check_parent_is_node(&node_dec, &mut decs);
         assert!(is_node);
         assert!(errors.is_empty());
     }
@@ -269,7 +271,8 @@ mod tests {
         }));
         let mut decs = LinkedHashMap::new();
 
-        let is_node = TypeChecker::new(&mut errors).check_parent_is_node(&enum_dec, &mut decs);
+        let is_node =
+            InheritanceChecker::new(&mut errors).check_parent_is_node(&enum_dec, &mut decs);
         assert!(!is_node);
         assert!(errors.is_empty());
     }
@@ -286,7 +289,7 @@ mod tests {
         decs.insert(Rc::as_ptr(&node_dec), Rc::clone(&node_dec));
 
         let node_name = "A".to_string();
-        let ok = TypeChecker::new(&mut errors)
+        let ok = InheritanceChecker::new(&mut errors)
             .check_no_circular_inheritance(&node_dec, &node_name, &decs);
         assert!(!ok);
         assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
@@ -295,6 +298,43 @@ mod tests {
         assert_eq!(
             err.message(),
             "circular inheritance: `A` is its own parent: `A -> A`"
+        );
+    }
+
+    #[test]
+    fn test_check_complex_circular_inheritance() {
+        let mut errors = MultiError::new();
+        let node_a = Rc::new(RefCell::new(Dec::Node {
+            name: "A".into(),
+            parents: vec![],
+            decs: vec![],
+        }));
+        let node_b = Rc::new(RefCell::new(Dec::Node {
+            name: "B".into(),
+            parents: vec![],
+            decs: vec![],
+        }));
+        let node_c = Rc::new(RefCell::new(Dec::Node {
+            name: "C".into(),
+            parents: vec![],
+            decs: vec![],
+        }));
+
+        let mut decs = LinkedHashMap::new();
+        decs.insert(Rc::as_ptr(&node_a), Rc::clone(&node_a));
+        decs.insert(Rc::as_ptr(&node_b), Rc::clone(&node_b));
+        decs.insert(Rc::as_ptr(&node_c), Rc::clone(&node_c));
+
+        let node_name = "B".to_string();
+        let ok = InheritanceChecker::new(&mut errors)
+            .check_no_circular_inheritance(&node_b, &node_name, &decs);
+        assert!(!ok);
+        assert_eq!(errors.error_kind(), Some(ErrorKind::Type));
+        let err = errors.iter().next().unwrap();
+        assert_eq!(err.error_kind(), &ErrorKind::Type);
+        assert_eq!(
+            err.message(),
+            "circular inheritance: `B` is its own parent: `A -> B -> C -> B`"
         );
     }
 }

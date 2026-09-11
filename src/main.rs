@@ -6,8 +6,8 @@ use crate::config::parser::ConfigParser;
 use crate::config::pretty_printer::PrettyPrinter;
 use crate::render::renderer::Renderer;
 use crate::typing::exp_resolver::ExpResolver;
+use crate::typing::inheritance_checker::InheritanceChecker;
 use crate::typing::name_resolver::NameResolver;
-use crate::typing::type_checker::TypeChecker;
 use crate::utils::error::MultiError;
 use crate::utils::file_reader::FileReader;
 
@@ -49,7 +49,7 @@ fn main() {
         => ConfigParser(&cli.config)
         => ExpResolver
         => NameResolver
-        => TypeChecker | exit_on_error
+        => InheritanceChecker | exit_on_error
     );
 
     match cli.command {
